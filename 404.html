@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>多美 | Admin</title>
+  <script>
+    const base = "/duomei-travel-journal/dist/index.html";
+    const target = location.pathname.endsWith("/admin") ? `${base}#admin` : base;
+    location.replace(target);
+  </script>
+</head>
+<body>
+  <a href="/duomei-travel-journal/dist/index.html#admin">打开管理员入口</a>
+</body>
+</html>

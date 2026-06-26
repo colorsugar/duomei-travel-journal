@@ -1,0 +1,14 @@
+name = "duomei-travel-journal-admin"
+main = "src/index.js"
+compatibility_date = "2026-06-26"
+
+[vars]
+GITHUB_OWNER = "colorsugar"
+GITHUB_REPO = "duomei-travel-journal"
+GITHUB_BRANCH = "main"
+ALLOWED_ORIGINS = "https://colorsugar.github.io,http://localhost:8787"
+ADMIN_EMAILS = "your-github-or-cloudflare-access-email@example.com"
+
+# Set this as a secret, never commit the value:
+# wrangler secret put GITHUB_TOKEN
+# wrangler secret put ADMIN_KEY

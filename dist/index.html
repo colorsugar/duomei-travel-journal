@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>多美 | Travel Journal</title>
-  <link rel="stylesheet" href="./css/archive.css?v=20260626-edit-cursor-fix">
+  <link rel="stylesheet" href="./css/archive.css?v=20260626-cms-v3">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
-  <div class="cursor-trail" aria-hidden="true"><span></span></div>
+  <div class="cursor-trail" aria-hidden="true"></div>
   <div class="cursor-icon" aria-hidden="true"></div>
   <div class="reading-progress" aria-hidden="true"><span></span></div>
 
@@ -19,8 +19,8 @@
       <button class="pill" type="button" data-view="journey">Journey</button>
       <button class="pill" type="button" data-view="tags">Tags</button>
       <button class="pill" type="button" data-view="stats">Stats</button>
-      <button class="pill edit-only" type="button" data-action="export">导出 JSON</button>
-      <button class="pill edit-only" type="button" data-action="import">导入 JSON</button>
+      <button class="pill edit-only admin-only" type="button" data-action="export">导出 JSON</button>
+      <button class="pill edit-only admin-only" type="button" data-action="import">导入 JSON</button>
       <input id="importInput" class="sr-file" type="file" accept="application/json">
     </div>
   </header>
@@ -91,16 +91,19 @@
     <button type="button" data-action="random">Random</button>
     <button type="button" data-action="next">Next</button>
   </div>
-  <button id="quickAddCity" class="quick-add edit-only" type="button" data-action="add-city">＋ 添加城市</button>
-  <button id="editToggle" class="edit-toggle" type="button" aria-pressed="false">编辑模式</button>
+
+  <button id="adminEntry" class="admin-entry" type="button">Admin</button>
+  <button id="quickAddCity" class="quick-add edit-only admin-only" type="button" data-action="add-city">＋ 添加城市</button>
+  <button id="editToggle" class="edit-toggle admin-only" type="button" aria-pressed="false">编辑模式</button>
+  <button id="adminPublish" class="publish-toggle admin-only" type="button">发布</button>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <div id="textToolbar" class="text-toolbar" aria-label="文字样式">
+  <div id="textToolbar" class="text-toolbar admin-only" aria-label="文字样式">
     <select data-style="font" title="字体">
       <option value="">默认无衬线</option>
       <option value="'SimSun', 'Songti SC', serif">宋体风</option>
       <option value="'Hiragino Mincho ProN', 'Yu Mincho', serif">明朝体 / serif</option>
-      <option value="'Comic Sans MS', 'Arial Rounded MT Bold', 'Yu Gothic', sans-serif">超圆非主流风</option>
+      <option value="'Comic Sans MS', 'Arial Rounded MT Bold', 'Yu Gothic', sans-serif">圆体风</option>
     </select>
     <input data-style="size" type="number" min="12" max="120" value="18" title="字号">
     <input data-style="color" type="color" value="#3d3a34" title="颜色">
@@ -117,6 +120,23 @@
     </select>
     <input data-style="lineHeight" type="number" min="1" max="3" step=".1" value="1.8" title="行距">
   </div>
+
+  <dialog id="adminDialog" class="dialog">
+    <form method="dialog" class="dialog-card">
+      <header class="dialog-head">
+        <h2>管理员</h2>
+        <button id="adminClose" class="dialog-close" value="cancel" aria-label="关闭">×</button>
+      </header>
+      <p class="admin-note">GitHub Token 不会进入网页。请填写 Cloudflare Worker 地址和管理员密钥，密钥只保存在当前浏览器会话。</p>
+      <label class="admin-field">Worker 地址<input id="workerUrl" placeholder="https://duomei-travel-journal-admin.your-name.workers.dev"></label>
+      <label class="admin-field">管理员密钥<input id="adminKey" type="password" autocomplete="current-password" placeholder="ADMIN_KEY"></label>
+      <div class="dialog-actions">
+        <button id="adminRestoreDraft" class="pill" type="button">恢复草稿</button>
+        <button id="adminEdit" class="pill" type="button">进入编辑</button>
+        <button id="adminConnect" class="pill primary" type="button">连接后台</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="cityDialog" class="dialog">
     <form method="dialog" class="dialog-card">
@@ -170,12 +190,14 @@
     <p id="lightboxCaption"></p>
   </div>
 
-  <script src="./js/data.js?v=20260626-edit-cursor-fix"></script>
-  <script src="./js/store.js?v=20260626-edit-cursor-fix"></script>
-  <script src="./js/image.js?v=20260626-edit-cursor-fix"></script>
-  <script src="./js/render.js?v=20260626-edit-cursor-fix"></script>
-  <script src="./js/editor.js?v=20260626-edit-cursor-fix"></script>
-  <script src="./js/interactions.js?v=20260626-edit-cursor-fix"></script>
-  <script src="./js/app.js?v=20260626-edit-cursor-fix"></script>
+  <script src="./js/data.js?v=20260626-cms-v3"></script>
+  <script src="./js/store.js?v=20260626-cms-v3"></script>
+  <script src="./js/image.js?v=20260626-cms-v3"></script>
+  <script src="./js/render.js?v=20260626-cms-v3"></script>
+  <script src="./js/editor.js?v=20260626-cms-v3"></script>
+  <script src="./js/interactions.js?v=20260626-cms-v3"></script>
+  <script src="./js/cms-client.js?v=20260626-cms-v3"></script>
+  <script src="./js/admin.js?v=20260626-cms-v3"></script>
+  <script src="./js/app.js?v=20260626-cms-v3"></script>
 </body>
 </html>
