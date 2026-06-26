@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "id": "version-1782482321316",
+    "createdAt": "2026-06-26T13:58:41.114Z",
+    "actor": "admin-key",
+    "message": "Update Travel Journal",
+    "summary": "Update Travel Journal"
+  }
+]
