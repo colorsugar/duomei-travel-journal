@@ -74,6 +74,30 @@
     });
   }
 
+  async function loadPublishedArchive() {
+    if (window.ArchiveCMS?.loadDraft?.()) return;
+    try {
+      const bust = `v=${Date.now()}`;
+      const [journeysRes, settingsRes] = await Promise.all([
+        fetch(`./content/journeys.json?${bust}`, { cache: "no-store" }),
+        fetch(`./content/settings.json?${bust}`, { cache: "no-store" })
+      ]);
+      if (!journeysRes.ok) return;
+      const journeys = await journeysRes.json();
+      if (!Array.isArray(journeys) || !journeys.length) return;
+      const settingsPayload = settingsRes.ok ? await settingsRes.json() : {};
+      state.data = window.ArchiveStore.normalize({
+        site: settingsPayload.site || state.data.site,
+        settings: settingsPayload.settings || state.data.settings,
+        journeys
+      });
+      window.ArchiveRender.renderApp(state);
+      if (state.currentSlug) window.ArchiveRender.renderDetail(state, state.currentSlug, false);
+    } catch (error) {
+      console.warn("Published archive load failed", error);
+    }
+  }
+
   function init() {
     window.ArchiveImage.bindCropper();
     window.ArchiveEditor.init(state);
@@ -82,6 +106,7 @@
     window.ArchiveRender.renderApp(state);
     showOnly("home");
     document.body.classList.toggle("edit-on", state.editMode);
+    loadPublishedArchive();
   }
 
   window.ArchiveApp = {

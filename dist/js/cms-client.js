@@ -23,23 +23,40 @@
   async function api(path, options = {}) {
     const base = workerUrl();
     if (!base) throw new Error("请先填写 Cloudflare Worker 地址");
+
     const key = adminKey();
-    const hasBody = Boolean(options.body);
+    const timeoutMs = options.timeoutMs || 180000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     const headers = {
-      ...(hasBody ? { "content-type": "text/plain;charset=utf-8" } : {}),
+      ...(options.body ? { "content-type": "application/json" } : {}),
       ...(key ? { authorization: `Bearer ${key}` } : {}),
       ...(options.headers || {})
     };
-    const response = await fetch(`${base}${path}`, {
-      ...options,
-      credentials: "include",
-      headers
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || payload.ok === false) {
-      throw new Error(payload.error || `请求失败：${response.status}`);
+
+    try {
+      const response = await fetch(`${base}${path}`, {
+        ...options,
+        signal: controller.signal,
+        headers
+      });
+      const text = await response.text();
+      const payload = text ? JSON.parse(text) : {};
+      if (!response.ok || payload.ok === false) {
+        throw new Error(payload.error || `请求失败：${response.status}`);
+      }
+      return payload;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        throw new Error("发布超时：后台超过 3 分钟没有响应，请检查 GitHub 是否已有新 commit。");
+      }
+      if (error instanceof SyntaxError) {
+        throw new Error("后台返回的不是 JSON，请检查 Worker 是否正常。");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
-    return payload;
   }
 
   function saveDraft(data) {

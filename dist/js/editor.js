@@ -49,26 +49,57 @@
     return { image, thumb, theme };
   }
 
+  function emptyPhotoSlot(city) {
+    return (city.gallery || []).find((photo) => !(photo.src || photo.image || photo.thumb));
+  }
+
+  function isEditing(state) {
+    return Boolean(state.editMode && document.body.classList.contains("admin-authenticated"));
+  }
+
+  function focusUploadedPhoto(photoId) {
+    if (!photoId) return;
+    requestAnimationFrame(() => {
+      const selector = window.CSS?.escape ? CSS.escape(photoId) : String(photoId).replace(/"/g, '\\"');
+      const editable = document.querySelector(`[data-photo="${selector}"]`);
+      const item = editable?.closest(".gallery-item");
+      if (!item) return;
+      item.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      item.classList.add("upload-focus");
+      window.setTimeout(() => item.classList.remove("upload-focus"), 1600);
+    });
+  }
+
+  function createPhoto() {
+    return {
+      id: window.ArchiveData.id("photo"),
+      src: "",
+      thumb: "",
+      title: "",
+      caption: "新的风景",
+      alt: "",
+      place: "",
+      takenAt: "",
+      camera: "",
+      notes: "",
+      styles: {}
+    };
+  }
+
   async function addGalleryFiles(city, files) {
     city.gallery = city.gallery || [];
+    const uploadedIds = [];
     for (const file of files) {
       const result = await cropAndTheme(file);
       if (!result) continue;
-      city.gallery.push({
-        id: window.ArchiveData.id("photo"),
-        src: result.image,
-        thumb: result.thumb,
-        title: "",
-        caption: "新的风景",
-        alt: "",
-        place: "",
-        takenAt: "",
-        camera: "",
-        notes: "",
-        styles: {}
-      });
+      const photo = emptyPhotoSlot(city) || createPhoto();
+      photo.src = result.image;
+      photo.thumb = result.thumb;
+      uploadedIds.push(photo.id);
+      if (!city.gallery.includes(photo)) city.gallery.push(photo);
     }
     touch(city);
+    return uploadedIds;
   }
 
   function setPath(root, path, value) {
@@ -216,7 +247,7 @@
   }
 
   function syncToolbar(state, editable) {
-    if (!state.editMode) return;
+    if (!isEditing(state)) return;
     state.activeEditable = editable;
     const toolbar = $("#textToolbar");
     if (!toolbar || !editable) return;
@@ -237,6 +268,7 @@
     input.addEventListener("change", async () => {
       const files = filesFrom(input);
       if (!files.length) return;
+      let uploadedIds = [];
 
       if (target.dataset.uploadCard) {
         const result = await cropAndTheme(files[0]);
@@ -261,15 +293,17 @@
         if (photo && result) {
           photo.src = result.image;
           photo.thumb = result.thumb;
+          uploadedIds.push(photo.id);
         }
       }
 
-      if (target.dataset.addGallery) await addGalleryFiles(city, files);
+      if (target.dataset.addGallery) uploadedIds = await addGalleryFiles(city, files);
 
       touch(city);
       state.data = window.ArchiveStore.normalize(state.data);
       window.ArchiveStore.save(state.data);
       window.ArchiveRender.renderApp(state);
+      focusUploadedPhoto(uploadedIds[0]);
     }, { once: true });
   }
 
@@ -317,11 +351,13 @@
   }
 
   function toggleEditMode(state) {
+    if (!document.body.classList.contains("admin-authenticated")) return;
     state.editMode = !state.editMode;
     $("#editToggle").setAttribute("aria-pressed", String(state.editMode));
     $("#editToggle").textContent = state.editMode ? "完成编辑" : "编辑模式";
     window.ArchiveRender.setEditable(state.editMode);
     document.body.classList.toggle("edit-on", state.editMode);
+    window.ArchiveRender.renderApp(state);
     if (!state.editMode) {
       state.activeEditable = null;
       $("#textToolbar")?.classList.remove("show");
@@ -335,7 +371,7 @@
       const upload = event.target.closest("[data-upload-card], [data-upload-cover], [data-upload-gallery], [data-add-gallery]");
       if (upload) {
         event.preventDefault();
-        if (!state.editMode) return;
+        if (!isEditing(state)) return;
         await uploadToTarget(state, upload);
         return;
       }
@@ -345,20 +381,20 @@
       const name = action.dataset.action;
 
       if (name === "home") window.ArchiveApp.showHome();
-      if (name === "add-city" && state.editMode) openCityEditor(state);
-      if (name === "edit-city" && state.editMode) openCityEditor(state, cityById(state.data, action.dataset.id));
+      if (name === "add-city" && isEditing(state)) openCityEditor(state);
+      if (name === "edit-city" && isEditing(state)) openCityEditor(state, cityById(state.data, action.dataset.id));
       if (name === "save-city") {
         event.preventDefault();
         await saveCityDialog(state);
       }
-      if (name === "delete-city" && state.editMode) deleteCity(state, action.dataset.id);
-      if (name === "move-city-up" && state.editMode) moveCity(state, action.dataset.id, "up");
-      if (name === "move-city-down" && state.editMode) moveCity(state, action.dataset.id, "down");
-      if (name === "delete-photo" && state.editMode) deletePhoto(state, action.dataset.city, action.dataset.photo);
-      if (name === "move-photo-left" && state.editMode) movePhoto(state, action.dataset.city, action.dataset.photo, "left");
-      if (name === "move-photo-right" && state.editMode) movePhoto(state, action.dataset.city, action.dataset.photo, "right");
-      if (name === "export") window.ArchiveStore.exportJson(state.data);
-      if (name === "import") $("#importInput")?.click();
+      if (name === "delete-city" && isEditing(state)) deleteCity(state, action.dataset.id);
+      if (name === "move-city-up" && isEditing(state)) moveCity(state, action.dataset.id, "up");
+      if (name === "move-city-down" && isEditing(state)) moveCity(state, action.dataset.id, "down");
+      if (name === "delete-photo" && isEditing(state)) deletePhoto(state, action.dataset.city, action.dataset.photo);
+      if (name === "move-photo-left" && isEditing(state)) movePhoto(state, action.dataset.city, action.dataset.photo, "left");
+      if (name === "move-photo-right" && isEditing(state)) movePhoto(state, action.dataset.city, action.dataset.photo, "right");
+      if (name === "export" && isEditing(state)) window.ArchiveStore.exportJson(state.data);
+      if (name === "import" && isEditing(state)) $("#importInput")?.click();
       if (name === "top") window.scrollTo({ top: 0, behavior: "smooth" });
       if (name === "random") window.ArchiveApp.openRandom();
       if (name === "next") window.ArchiveApp.openNext();
@@ -375,8 +411,8 @@
     });
 
     document.addEventListener("input", (event) => {
-      if (event.target.matches(".editable") && state.editMode) saveEditable(state, event.target);
-      if (event.target.matches("[data-style]") && state.editMode) applyStyleControl(state, event.target);
+      if (event.target.matches(".editable") && isEditing(state)) saveEditable(state, event.target);
+      if (event.target.matches("[data-style]") && isEditing(state)) applyStyleControl(state, event.target);
     });
 
     $("#importInput")?.addEventListener("change", async (event) => {

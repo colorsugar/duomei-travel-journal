@@ -95,6 +95,10 @@
 
     const prev = state.data.journeys[(index - 1 + state.data.journeys.length) % state.data.journeys.length];
     const next = state.data.journeys[(index + 1) % state.data.journeys.length];
+    const editing = Boolean(state.editMode && document.body.classList.contains("admin-authenticated"));
+    const visibleGallery = editing
+      ? city.gallery
+      : city.gallery.filter((photo) => photo.src || photo.image || photo.thumb);
     $("#detailView").innerHTML = `
       <section class="detail-hero">
         ${imageBlock({
@@ -128,12 +132,12 @@
       </section>
       <section class="gallery-wrap">
         <div class="gallery">
-          ${city.gallery.map((photo, photoIndex) => galleryItem(city, photo, photoIndex)).join("")}
+          ${visibleGallery.map((photo, photoIndex) => galleryItem(city, photo, photoIndex)).join("")}
           <button class="add-photo reveal edit-only" data-add-gallery="${esc(city.id)}">＋ 添加图片</button>
         </div>
       </section>
-      <nav class="filmstrip ${city.gallery.some((photo) => photo.src || photo.image || photo.thumb) ? "has-items" : ""}">
-        ${city.gallery.map((photo) => (photo.src || photo.image || photo.thumb) ? `<button class="film-thumb" data-lightbox-photo="${esc(photo.id)}"><img src="${photo.thumb || photo.src || photo.image}" alt="${esc(photo.alt || photo.title || photo.caption || "")}"></button>` : "").join("")}
+      <nav class="filmstrip ${visibleGallery.some((photo) => photo.src || photo.image || photo.thumb) ? "has-items" : ""}">
+        ${visibleGallery.map((photo) => (photo.src || photo.image || photo.thumb) ? `<button class="film-thumb" data-lightbox-photo="${esc(photo.id)}"><img src="${photo.thumb || photo.src || photo.image}" alt="${esc(photo.alt || photo.title || photo.caption || "")}"></button>` : "").join("")}
       </nav>
       <section class="reading">
         <div class="prose reveal">${editable("city.bodyBottom", city.bodyBottom, city.styles?.bodyBottom, `data-city="${esc(city.id)}"`)}</div>
@@ -219,9 +223,10 @@
   }
 
   function setEditable(enabled) {
-    document.body.classList.toggle("edit-on", enabled);
+    const active = Boolean(enabled && document.body.classList.contains("admin-authenticated"));
+    document.body.classList.toggle("edit-on", active);
     document.querySelectorAll(".editable").forEach((node) => {
-      node.contentEditable = enabled ? "true" : "false";
+      node.contentEditable = active ? "true" : "false";
       node.spellcheck = false;
     });
   }

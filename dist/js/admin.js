@@ -10,6 +10,11 @@
     window.ArchiveUI?.toast(message);
   }
 
+  function setAdminStatus(text) {
+    const status = $("#adminStatus");
+    if (status) status.textContent = text;
+  }
+
   function openDialog() {
     const dialog = $("#adminDialog");
     $("#workerUrl").value = window.ArchiveCMS.workerUrl();
@@ -28,7 +33,8 @@
     const health = await window.ArchiveCMS.api("/api/health");
     if (!health.admin) throw new Error("后台已连接，但当前账号不是管理员");
     document.body.classList.add("admin-authenticated");
-    toast(`管理员已登录：${health.actor || "admin"}`);
+    setAdminStatus(`后台已连接${health.actor ? ` · ${health.actor}` : ""}`);
+    toast("管理员已登录");
     closeDialog();
     return health;
   }
@@ -39,6 +45,18 @@
       return;
     }
     $("#editToggle")?.click();
+  }
+
+  function logoutAdmin() {
+    document.body.classList.remove("admin-authenticated", "edit-on");
+    window.ArchiveCMS.setAdminKey("");
+    if (window.ArchiveApp?.state) {
+      window.ArchiveApp.state.editMode = false;
+      window.ArchiveRender.setEditable(false);
+      window.ArchiveRender.renderApp(window.ArchiveApp.state);
+    }
+    setAdminStatus("后台已断开");
+    toast("已退出管理");
   }
 
   function setPublishing(button, enabled) {
@@ -74,13 +92,24 @@
       const archive = window.ArchiveStore.normalize(window.ArchiveApp.state.data);
       const result = await window.ArchiveCMS.api("/api/publish", {
         method: "POST",
+        timeoutMs: 180000,
         body: JSON.stringify({ message, summary: message, archive })
       });
-      if (!result?.ok || !result.commit) throw new Error("发布没有返回 commit，已保留草稿");
+
+      if (!result?.ok || !result.commit) {
+        throw new Error("发布没有返回 commit，草稿已保留");
+      }
+
+      if (result.archive) {
+        window.ArchiveApp.state.data = window.ArchiveStore.normalize(result.archive);
+        window.ArchiveStore.save(window.ArchiveApp.state.data, true);
+        window.ArchiveRender.renderApp(window.ArchiveApp.state);
+      }
+
       window.ArchiveCMS.clearDraft();
-      toast(`发布成功：${result.commit.slice(0, 7)}`);
+      toast(`发布成功：${result.commit.slice(0, 7)}${result.uploads ? `，图片 ${result.uploads} 张` : ""}`);
     } catch (error) {
-      toast(error.message || "发布失败，已保留草稿");
+      toast(error.message || "发布失败，草稿已保留");
       throw error;
     } finally {
       setPublishing(button, false);
@@ -151,6 +180,7 @@
     $("#adminEdit")?.addEventListener("click", enableEdit);
     $("#adminPublish")?.addEventListener("click", () => publish().catch(() => {}));
     $("#adminRestoreDraft")?.addEventListener("click", restoreDraft);
+    $("#adminLogout")?.addEventListener("click", logoutAdmin);
     $("#adminClose")?.addEventListener("click", closeDialog);
     bindLogoSecret();
     bindAutoSave();

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>多美 | Travel Journal</title>
-  <link rel="stylesheet" href="./css/archive.css?v=20260626-cms-v3">
+  <link rel="stylesheet" href="./css/archive.css?v=20260627-ux-polish">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -21,6 +21,8 @@
       <button class="pill" type="button" data-view="stats">Stats</button>
       <button class="pill edit-only admin-only" type="button" data-action="export">导出 JSON</button>
       <button class="pill edit-only admin-only" type="button" data-action="import">导入 JSON</button>
+      <span class="pill admin-status" id="adminStatus">后台已连接</span>
+      <button class="pill admin-only" id="adminLogout" type="button">退出管理</button>
       <input id="importInput" class="sr-file" type="file" accept="application/json">
     </div>
   </header>
@@ -92,7 +94,7 @@
     <button type="button" data-action="next">Next</button>
   </div>
 
-  <button id="adminEntry" class="admin-entry" type="button">Admin</button>
+  <button id="adminEntry" class="admin-entry hidden-admin-entry" type="button" aria-hidden="true" tabindex="-1">Admin</button>
   <button id="quickAddCity" class="quick-add edit-only admin-only" type="button" data-action="add-city">＋ 添加城市</button>
   <button id="editToggle" class="edit-toggle admin-only" type="button" aria-pressed="false">编辑模式</button>
   <button id="adminPublish" class="publish-toggle edit-only admin-only" type="button">发布</button>
@@ -190,14 +192,14 @@
     <p id="lightboxCaption"></p>
   </div>
 
-  <script src="./js/data.js?v=20260626-cms-v3"></script>
-  <script src="./js/store.js?v=20260626-cms-v3"></script>
-  <script src="./js/image.js?v=20260626-cms-v3"></script>
-  <script src="./js/render.js?v=20260626-cms-v3"></script>
-  <script src="./js/editor.js?v=20260626-cms-v3"></script>
-  <script src="./js/interactions.js?v=20260626-cms-v3"></script>
-  <script src="./js/cms-client.js?v=20260626-cms-v3"></script>
-  <script src="./js/admin.js?v=20260626-cms-v3"></script>
-  <script src="./js/app.js?v=20260626-cms-v3"></script>
+  <script src="./js/data.js?v=20260627-ux-polish"></script>
+  <script src="./js/store.js?v=20260627-ux-polish"></script>
+  <script src="./js/image.js?v=20260627-ux-polish"></script>
+  <script src="./js/render.js?v=20260627-ux-polish"></script>
+  <script src="./js/editor.js?v=20260627-ux-polish"></script>
+  <script src="./js/interactions.js?v=20260627-ux-polish"></script>
+  <script src="./js/cms-client.js?v=20260627-ux-polish"></script>
+  <script src="./js/admin.js?v=20260627-ux-polish"></script>
+  <script src="./js/app.js?v=20260627-ux-polish"></script>
 </body>
 </html>

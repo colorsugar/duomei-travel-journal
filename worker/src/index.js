@@ -10,6 +10,16 @@ function json(data, status = 200, extraHeaders = {}) {
   });
 }
 
+async function parseJsonBody(request) {
+  const text = await request.text();
+  if (!text.trim()) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw Object.assign(new Error("Invalid JSON payload"), { status: 400 });
+  }
+}
+
 function corsHeaders(request, env) {
   const origin = request.headers.get("origin") || "";
   const allowed = String(env.ALLOWED_ORIGINS || "")
@@ -106,11 +116,64 @@ async function createBlob(env, content, encoding = "utf-8") {
   return response.json();
 }
 
+function extensionFromMime(mime = "") {
+  if (mime.includes("webp")) return "webp";
+  if (mime.includes("png")) return "png";
+  if (mime.includes("gif")) return "gif";
+  if (mime.includes("jpeg") || mime.includes("jpg")) return "jpg";
+  return "webp";
+}
+
+function dataUrlParts(value) {
+  if (typeof value !== "string" || !value.startsWith("data:image/")) return null;
+  const match = value.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mime: match[1], base64: match[2] };
+}
+
+function uploadName(prefix, mime) {
+  const stamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
+  const random = crypto.randomUUID().slice(0, 8);
+  return `dist/uploads/${stamp}-${prefix}-${random}.${extensionFromMime(mime)}`;
+}
+
+function publicUploadPath(repoPath) {
+  return `./uploads/${repoPath.split("/").pop()}`;
+}
+
+function replaceImageValue(value, pathHint, uploads) {
+  const data = dataUrlParts(value);
+  if (!data) return value || "";
+  const repoPath = uploadName(pathHint, data.mime);
+  uploads.push({ path: repoPath, base64: data.base64 });
+  return publicUploadPath(repoPath);
+}
+
+function migrateImages(archive) {
+  const uploads = [];
+  const next = JSON.parse(JSON.stringify(archive));
+  for (const journey of next.journeys || []) {
+    const prefix = String(journey.slug || journey.id || "journey").replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+    journey.coverImage = replaceImageValue(journey.coverImage, `${prefix}-cover`, uploads);
+    journey.coverThumb = replaceImageValue(journey.coverThumb, `${prefix}-cover-thumb`, uploads);
+    journey.cardImage = replaceImageValue(journey.cardImage, `${prefix}-card`, uploads);
+    journey.cardThumb = replaceImageValue(journey.cardThumb, `${prefix}-card-thumb`, uploads);
+    for (const photo of journey.gallery || []) {
+      const photoPrefix = `${prefix}-${String(photo.id || "photo").replace(/[^a-z0-9-]/gi, "-").toLowerCase()}`;
+      photo.src = replaceImageValue(photo.src || photo.image, photoPrefix, uploads);
+      delete photo.image;
+      photo.thumb = replaceImageValue(photo.thumb, `${photoPrefix}-thumb`, uploads);
+    }
+  }
+  return { archive: next, uploads };
+}
+
 async function publishArchive(request, env) {
   const actor = assertAdmin(request, env);
-  const body = await request.json();
+  const body = await parseJsonBody(request);
   const message = String(body.message || "").trim() || "Update Travel Journal";
-  const archive = body.archive;
+  const migrated = migrateImages(body.archive || {});
+  const archive = migrated.archive;
   if (!archive || typeof archive !== "object") {
     return json({ ok: false, error: "Missing archive payload" }, 400, corsHeaders(request, env));
   }
@@ -134,6 +197,10 @@ async function publishArchive(request, env) {
 
   const { ref, commit } = await currentHead(env);
   const treeEntries = [];
+  for (const upload of migrated.uploads) {
+    const blob = await createBlob(env, upload.base64, "base64");
+    treeEntries.push({ path: upload.path, mode: "100644", type: "blob", sha: blob.sha });
+  }
   for (const [path, value] of Object.entries(files)) {
     const blob = await createBlob(env, JSON.stringify(value, null, 2));
     treeEntries.push({ path, mode: "100644", type: "blob", sha: blob.sha });
@@ -166,7 +233,13 @@ async function publishArchive(request, env) {
   });
   if (!updateResponse.ok) throw new Error(`Cannot update branch: ${updateResponse.status}`);
 
-  return json({ ok: true, commit: nextCommit.sha, version: nextVersion }, 200, corsHeaders(request, env));
+  return json({
+    ok: true,
+    commit: nextCommit.sha,
+    version: nextVersion,
+    uploads: migrated.uploads.length,
+    archive
+  }, 200, corsHeaders(request, env));
 }
 
 function collectTags(journeys) {
