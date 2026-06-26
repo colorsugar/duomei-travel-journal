@@ -94,10 +94,6 @@
         toast("请填写 Worker 地址");
         return;
       }
-      if (!key) {
-        toast("请填写管理员密钥");
-        return;
-      }
       window.ArchiveCMS.setWorkerUrl(url);
       window.ArchiveCMS.setAdminKey(key);
       try {
