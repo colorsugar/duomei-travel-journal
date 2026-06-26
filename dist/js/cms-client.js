@@ -24,14 +24,16 @@
     const base = workerUrl();
     if (!base) throw new Error("请先填写 Cloudflare Worker 地址");
     const key = adminKey();
+    const hasBody = Boolean(options.body);
+    const headers = {
+      ...(hasBody ? { "content-type": "text/plain;charset=utf-8" } : {}),
+      ...(key ? { authorization: `Bearer ${key}` } : {}),
+      ...(options.headers || {})
+    };
     const response = await fetch(`${base}${path}`, {
       ...options,
       credentials: "include",
-      headers: {
-        "content-type": "application/json",
-        ...(key ? { authorization: `Bearer ${key}` } : {}),
-        ...(options.headers || {})
-      }
+      headers
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok || payload.ok === false) {

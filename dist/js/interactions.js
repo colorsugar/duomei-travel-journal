@@ -1,6 +1,7 @@
 (function () {
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+  const esc = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
 
   let stateRef;
   let observer;
@@ -143,7 +144,11 @@
     const photo = lightboxPhotos[lightboxIndex];
     if (!photo) return;
     $("#lightboxImage").src = photo.src || photo.image || photo.thumb || "";
-    $("#lightboxCaption").innerHTML = photo.caption || "";
+    $("#lightboxCaption").innerHTML = [
+      photo.title ? `<strong>${esc(photo.title)}</strong>` : "",
+      esc(photo.caption || ""),
+      esc([photo.place, photo.takenAt, photo.camera].filter(Boolean).join(" · "))
+    ].filter(Boolean).join("<br>");
   }
 
   function moveLightbox(step) {

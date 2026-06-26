@@ -3,6 +3,8 @@
 
   let logoClicks = 0;
   let logoTimer = 0;
+  let publishing = false;
+  let autoSaveTimer = 0;
 
   function toast(message) {
     window.ArchiveUI?.toast(message);
@@ -24,7 +26,7 @@
 
   async function checkAdmin() {
     const health = await window.ArchiveCMS.api("/api/health");
-    if (!health.admin) throw new Error("后台已连接，但管理员密钥不正确");
+    if (!health.admin) throw new Error("后台已连接，但当前账号不是管理员");
     document.body.classList.add("admin-authenticated");
     toast(`管理员已登录：${health.actor || "admin"}`);
     closeDialog();
@@ -39,25 +41,50 @@
     $("#editToggle")?.click();
   }
 
+  function setPublishing(button, enabled) {
+    publishing = enabled;
+    if (!button) return;
+    button.disabled = enabled;
+    if (enabled) {
+      button.dataset.originalText = button.textContent;
+      button.textContent = "发布中...";
+      button.classList.add("is-loading");
+    } else {
+      button.textContent = button.dataset.originalText || "发布";
+      button.classList.remove("is-loading");
+    }
+  }
+
   async function publish() {
+    if (publishing) return;
     if (!document.body.classList.contains("admin-authenticated")) {
       openDialog();
       return;
     }
+
     const message = prompt("发布说明 / Commit Message", "Update Travel Journal");
     if (!message) return;
+
+    const button = $("#adminPublish");
+    setPublishing(button, true);
     window.ArchiveCMS.saveDraft(window.ArchiveApp.state.data);
-    toast("正在发布到 GitHub...");
-    const result = await window.ArchiveCMS.api("/api/publish", {
-      method: "POST",
-      body: JSON.stringify({
-        message,
-        summary: message,
-        archive: window.ArchiveApp.state.data
-      })
-    });
-    window.ArchiveCMS.clearDraft();
-    toast(`发布成功：${result.commit.slice(0, 7)}`);
+
+    try {
+      toast("正在发布到 GitHub...");
+      const archive = window.ArchiveStore.normalize(window.ArchiveApp.state.data);
+      const result = await window.ArchiveCMS.api("/api/publish", {
+        method: "POST",
+        body: JSON.stringify({ message, summary: message, archive })
+      });
+      if (!result?.ok || !result.commit) throw new Error("发布没有返回 commit，已保留草稿");
+      window.ArchiveCMS.clearDraft();
+      toast(`发布成功：${result.commit.slice(0, 7)}`);
+    } catch (error) {
+      toast(error.message || "发布失败，已保留草稿");
+      throw error;
+    } finally {
+      setPublishing(button, false);
+    }
   }
 
   function restoreDraft() {
@@ -67,10 +94,25 @@
       return;
     }
     if (!confirm(`恢复 ${new Date(draft.savedAt).toLocaleString()} 的草稿吗？`)) return;
-    window.ArchiveApp.state.data = draft.data;
-    window.ArchiveStore.save(draft.data, true);
+    window.ArchiveApp.state.data = window.ArchiveStore.normalize(draft.data);
+    window.ArchiveStore.save(window.ArchiveApp.state.data, true);
     window.ArchiveRender.renderApp(window.ArchiveApp.state);
     toast("草稿已恢复");
+  }
+
+  function saveDraftSilently() {
+    if (!document.body.classList.contains("admin-authenticated")) return;
+    if (!window.ArchiveApp?.state?.data) return;
+    window.ArchiveCMS.saveDraft(window.ArchiveApp.state.data);
+  }
+
+  function bindAutoSave() {
+    clearInterval(autoSaveTimer);
+    autoSaveTimer = setInterval(saveDraftSilently, 30000);
+    window.addEventListener("beforeunload", saveDraftSilently);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") saveDraftSilently();
+    });
   }
 
   function bindLogoSecret() {
@@ -94,19 +136,24 @@
         toast("请填写 Worker 地址");
         return;
       }
+      if (!key) {
+        toast("请填写管理员密钥");
+        return;
+      }
       window.ArchiveCMS.setWorkerUrl(url);
       window.ArchiveCMS.setAdminKey(key);
       try {
         await checkAdmin();
       } catch (error) {
-        toast(error.message);
+        toast(error.message || "连接后台失败");
       }
     });
     $("#adminEdit")?.addEventListener("click", enableEdit);
-    $("#adminPublish")?.addEventListener("click", () => publish().catch((error) => toast(error.message)));
+    $("#adminPublish")?.addEventListener("click", () => publish().catch(() => {}));
     $("#adminRestoreDraft")?.addEventListener("click", restoreDraft);
     $("#adminClose")?.addEventListener("click", closeDialog);
     bindLogoSecret();
+    bindAutoSave();
 
     if (location.hash === "#admin" || location.pathname.endsWith("/admin")) {
       setTimeout(openDialog, 250);

@@ -1,31 +1,77 @@
 (function () {
-  const KEY = "duomei_travel_archive_v2";
-  const OLD_KEY = "duomei_editable_travel_journal_v1";
+  const KEY = "duomei_travel_archive_v3";
+  const LEGACY_KEYS = ["duomei_travel_archive_v2", "duomei_editable_travel_journal_v1"];
   let warnedQuota = false;
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
   }
 
-  function normalizePhoto(photo, index = 0) {
+  function asTags(value) {
+    return Array.isArray(value)
+      ? value.map((tag) => String(tag).trim()).filter(Boolean)
+      : String(value || "").split(/[,，\s]+/).map((tag) => tag.trim()).filter(Boolean);
+  }
+
+  function normalizePhoto(photo = {}, index = 0) {
     if (typeof photo === "string") {
-      return {
-        id: window.ArchiveData.id("photo"),
-        src: photo.startsWith("data:") ? photo : "",
-        thumb: "",
-        caption: index === 0 ? "照片说明可以在这里编辑。" : "",
-        camera: "",
-        styles: {}
-      };
+      photo = { src: photo.startsWith("data:") ? photo : "" };
     }
+    const caption = photo.caption || photo.description || (index === 0 ? "照片说明可以在这里编辑。" : "");
     return {
       id: photo.id || window.ArchiveData.id("photo"),
       src: photo.src || photo.image || "",
       thumb: photo.thumb || "",
-      caption: photo.caption || "",
+      title: photo.title || "",
+      caption,
+      alt: photo.alt || photo.title || caption || "",
+      place: photo.place || photo.location || "",
+      takenAt: photo.takenAt || photo.date || "",
       camera: photo.camera || "",
-      styles: photo.styles || {}
+      notes: photo.notes || photo.remark || "",
+      styles: {
+        title: photo.styles?.title || {},
+        caption: photo.styles?.caption || {},
+        meta: photo.styles?.meta || {}
+      }
     };
+  }
+
+  function normalizeCity(item = {}) {
+    const city = {
+      ...window.ArchiveData.createCity(
+        item.slug || item.title || "city",
+        item.title || "未命名",
+        item.published || item.date || "",
+        item.place || item.location || "",
+        item.excerpt || item.line || "",
+        asTags(item.tags)
+      ),
+      ...item
+    };
+
+    city.id = city.id || window.ArchiveData.id(city.slug || "journey");
+    city.slug = city.slug || String(city.title || city.id).toLowerCase();
+    city.published = item.published || item.date || city.published || "";
+    city.updated = item.updated || new Date().toISOString().slice(0, 10);
+    city.views = Number(item.views || 0);
+    city.category = city.category || "Travel";
+    city.place = item.place || item.location || city.place || "";
+    city.tags = asTags(item.tags || city.tags);
+    city.coverImage = item.coverImage || "";
+    city.coverThumb = item.coverThumb || "";
+    city.coverCaption = item.coverCaption || item.heroCaption || "";
+    city.cardImage = item.cardImage || "";
+    city.cardThumb = item.cardThumb || "";
+    city.theme = item.theme || null;
+    city.styles = item.styles || {};
+    city.gallery = Array.isArray(item.gallery)
+      ? item.gallery.map(normalizePhoto)
+      : Array.isArray(item.photos)
+        ? item.photos.map(normalizePhoto)
+        : (city.gallery || []).map(normalizePhoto);
+    city.status = city.status || "public";
+    return city;
   }
 
   function normalize(data) {
@@ -33,49 +79,30 @@
     const incoming = data || {};
     const journeys = Array.isArray(incoming.journeys) ? incoming.journeys : base.journeys;
     return {
-      ...base,
-      ...incoming,
+      version: 3,
       site: {
         ...base.site,
         ...(incoming.site || {}),
         styles: { ...base.site.styles, ...(incoming.site?.styles || {}) }
       },
       settings: { ...base.settings, ...(incoming.settings || {}) },
-      journeys: journeys.map((item) => {
-        const city = {
-          ...window.ArchiveData.createCity(
-            item.slug || item.title || "city",
-            item.title || "未命名",
-            item.published || item.date || "",
-            item.place || item.location || "",
-            item.excerpt || item.line || "",
-            item.tags || []
-          ),
-          ...item
-        };
-        city.published = item.published || item.date || city.published;
-        city.updated = item.updated || new Date().toISOString().slice(0, 10);
-        city.views = Number(item.views || 0);
-        city.tags = Array.isArray(item.tags)
-          ? item.tags
-          : String(item.tags || "").split(/[,，\s]+/).map((tag) => tag.trim()).filter(Boolean);
-        city.gallery = Array.isArray(item.gallery)
-          ? item.gallery.map(normalizePhoto)
-          : Array.isArray(item.photos)
-            ? item.photos.map(normalizePhoto)
-            : city.gallery.map(normalizePhoto);
-        city.coverThumb = item.coverThumb || "";
-        city.cardThumb = item.cardThumb || "";
-        city.styles = item.styles || {};
-        return city;
-      })
+      journeys: journeys.map(normalizeCity),
+      notes: Array.isArray(incoming.notes) ? incoming.notes : []
     };
+  }
+
+  function readSaved() {
+    const keys = [KEY, ...LEGACY_KEYS];
+    for (const key of keys) {
+      const value = localStorage.getItem(key);
+      if (value) return JSON.parse(value);
+    }
+    return null;
   }
 
   function load() {
     try {
-      const saved = localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY);
-      return normalize(saved ? JSON.parse(saved) : null);
+      return normalize(readSaved());
     } catch {
       return normalize(null);
     }
@@ -84,14 +111,14 @@
   function quotaMessage() {
     if (warnedQuota) return;
     warnedQuota = true;
-    window.ArchiveUI?.toast("本地空间满了：页面可继续使用，请先导出 JSON 备份");
+    window.ArchiveUI?.toast("本地存储空间可能满了，请先导出 JSON 备份，或减少大图数量后再试。");
     setTimeout(() => { warnedQuota = false; }, 12000);
   }
 
   function save(data, silent = false) {
     try {
-      localStorage.removeItem(OLD_KEY);
-      localStorage.setItem(KEY, JSON.stringify(data));
+      LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
+      localStorage.setItem(KEY, JSON.stringify(normalize(data)));
       if (!silent) window.ArchiveUI?.toast("已保存");
       return true;
     } catch {
@@ -101,7 +128,7 @@
   }
 
   function exportJson(data) {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(normalize(data), null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -116,7 +143,7 @@
 
   function clearSavedData() {
     localStorage.removeItem(KEY);
-    localStorage.removeItem(OLD_KEY);
+    LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
   }
 
   window.ArchiveStore = { KEY, load, save, exportJson, importJson, normalize, clearSavedData };

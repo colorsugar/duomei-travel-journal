@@ -50,6 +50,7 @@
   }
 
   function renderApp(state) {
+    state.data = window.ArchiveStore.normalize(state.data);
     applySiteText(state);
     renderJourney(state);
     if (state.currentSlug) renderDetail(state, state.currentSlug, false);
@@ -104,6 +105,7 @@
           alt: city.title,
           theme: true
         })}
+        <p class="hero-caption">${editable("city.coverCaption", city.coverCaption || "封面说明可以在这里编辑。", city.styles?.coverCaption, `data-city="${esc(city.id)}"`)}</p>
         <div class="detail-copy">
           <button class="back" data-action="home">Back to Journey</button>
           <h1 class="detail-title">${editable("city.title", city.title, city.styles?.title, `data-city="${esc(city.id)}"`)}</h1>
@@ -131,7 +133,7 @@
         </div>
       </section>
       <nav class="filmstrip ${city.gallery.some((photo) => photo.src || photo.image || photo.thumb) ? "has-items" : ""}">
-        ${city.gallery.map((photo) => (photo.src || photo.image || photo.thumb) ? `<button class="film-thumb" data-lightbox-photo="${esc(photo.id)}"><img src="${photo.thumb || photo.src || photo.image}" alt=""></button>` : "").join("")}
+        ${city.gallery.map((photo) => (photo.src || photo.image || photo.thumb) ? `<button class="film-thumb" data-lightbox-photo="${esc(photo.id)}"><img src="${photo.thumb || photo.src || photo.image}" alt="${esc(photo.alt || photo.title || photo.caption || "")}"></button>` : "").join("")}
       </nav>
       <section class="reading">
         <div class="prose reveal">${editable("city.bodyBottom", city.bodyBottom, city.styles?.bodyBottom, `data-city="${esc(city.id)}"`)}</div>
@@ -148,7 +150,21 @@
     requestAnimationFrame(() => window.ArchiveFX?.observe());
   }
 
+  function photoMeta(city, photo) {
+    const attr = `data-city="${esc(city.id)}" data-photo="${esc(photo.id)}"`;
+    return `
+      <p class="photo-meta">
+        ${editable("photo.place", photo.place || "地点", photo.styles?.meta, attr)}
+        <span> · </span>
+        ${editable("photo.takenAt", photo.takenAt || "时间", photo.styles?.meta, attr)}
+        <span> · </span>
+        ${editable("photo.camera", photo.camera || "器材", photo.styles?.meta, attr)}
+      </p>
+    `;
+  }
+
   function galleryItem(city, photo, index) {
+    const attr = `data-city="${esc(city.id)}" data-photo="${esc(photo.id)}"`;
     return `<div class="gallery-item reveal">
       <div class="image-tools edit-only">
         <button class="icon-btn" data-upload-gallery="${esc(photo.id)}" data-city="${esc(city.id)}">上传</button>
@@ -160,10 +176,15 @@
         image: photo.src || photo.image,
         thumb: photo.thumb,
         background: window.ArchiveData.gradients[index % window.ArchiveData.gradients.length],
-        alt: `${city.title} ${index + 1}`,
-        attrs: `data-city="${esc(city.id)}" data-photo="${esc(photo.id)}"`
+        alt: photo.alt || photo.title || photo.caption || `${city.title} ${index + 1}`,
+        attrs: attr
       })}
-      <div class="gallery-caption">${editable("photo.caption", photo.caption || "照片说明可以在这里编辑。", photo.styles?.caption, `data-city="${esc(city.id)}" data-photo="${esc(photo.id)}"`)}</div>
+      <div class="photo-copy">
+        <h3 class="photo-title">${editable("photo.title", photo.title || "照片标题", photo.styles?.title, attr)}</h3>
+        <p class="gallery-caption">${editable("photo.caption", photo.caption || "照片说明可以在这里编辑。", photo.styles?.caption, attr)}</p>
+        ${photoMeta(city, photo)}
+        <p class="photo-notes">${editable("photo.notes", photo.notes || "备注", photo.styles?.notes, attr)}</p>
+      </div>
     </div>`;
   }
 

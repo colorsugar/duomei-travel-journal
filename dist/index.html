@@ -95,10 +95,10 @@
   <button id="adminEntry" class="admin-entry" type="button">Admin</button>
   <button id="quickAddCity" class="quick-add edit-only admin-only" type="button" data-action="add-city">＋ 添加城市</button>
   <button id="editToggle" class="edit-toggle admin-only" type="button" aria-pressed="false">编辑模式</button>
-  <button id="adminPublish" class="publish-toggle admin-only" type="button">发布</button>
+  <button id="adminPublish" class="publish-toggle edit-only admin-only" type="button">发布</button>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <div id="textToolbar" class="text-toolbar admin-only" aria-label="文字样式">
+  <div id="textToolbar" class="text-toolbar edit-only admin-only" aria-label="文字样式">
     <select data-style="font" title="字体">
       <option value="">默认无衬线</option>
       <option value="'SimSun', 'Songti SC', serif">宋体风</option>
@@ -127,9 +127,9 @@
         <h2>管理员</h2>
         <button id="adminClose" class="dialog-close" value="cancel" aria-label="关闭">×</button>
       </header>
-      <p class="admin-note">GitHub Token 不会进入网页。请填写 Cloudflare Worker 地址；管理员密钥是备用方式，使用 Cloudflare Access 时可以留空。</p>
+      <p class="admin-note">GitHub Token 不会进入网页。请填写 Cloudflare Worker 地址和管理员密钥；管理员密钥只保存在当前浏览器会话。</p>
       <label class="admin-field">Worker 地址<input id="workerUrl" placeholder="https://duomei-travel-journal-admin.your-name.workers.dev"></label>
-      <label class="admin-field">管理员密钥（可留空）<input id="adminKey" type="password" autocomplete="current-password" placeholder="Cloudflare Access 可留空"></label>
+      <label class="admin-field">管理员密钥<input id="adminKey" type="password" autocomplete="current-password" placeholder="ADMIN_KEY"></label>
       <div class="dialog-actions">
         <button id="adminRestoreDraft" class="pill" type="button">恢复草稿</button>
         <button id="adminEdit" class="pill" type="button">进入编辑</button>

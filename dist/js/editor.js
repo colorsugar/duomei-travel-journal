@@ -1,6 +1,5 @@
 (function () {
   const $ = (selector, root = document) => root.querySelector(selector);
-
   const today = () => new Date().toISOString().slice(0, 10);
 
   function slugify(value) {
@@ -51,6 +50,7 @@
   }
 
   async function addGalleryFiles(city, files) {
+    city.gallery = city.gallery || [];
     for (const file of files) {
       const result = await cropAndTheme(file);
       if (!result) continue;
@@ -58,8 +58,13 @@
         id: window.ArchiveData.id("photo"),
         src: result.image,
         thumb: result.thumb,
+        title: "",
         caption: "新的风景",
+        alt: "",
+        place: "",
+        takenAt: "",
         camera: "",
+        notes: "",
         styles: {}
       });
     }
@@ -84,7 +89,7 @@
     $("#cityPlace").value = city?.place || "";
     $("#cityPublished").value = city?.published || today();
     $("#cityCategory").value = city?.category || "Travel";
-    $("#cityTags").value = city?.tags?.join("，") || "";
+    $("#cityTags").value = city?.tags?.join(", ") || "";
     $("#cityExcerpt").value = city?.excerpt || "";
     $("#cityBody").value = city?.bodyTop || "";
     $("#cityCover").value = "";
@@ -134,6 +139,7 @@
 
     if (!existing) state.data.journeys.push(city);
     state.currentSlug = city.slug;
+    state.data = window.ArchiveStore.normalize(state.data);
     window.ArchiveStore.save(state.data);
     closeDialog($("#cityDialog"));
     window.ArchiveRender.renderApp(state);
@@ -143,20 +149,21 @@
   function saveEditable(state, target) {
     const path = target.dataset.bind;
     if (!path) return;
+    const value = target.innerHTML.trim();
 
     if (path.startsWith("site.")) {
-      setPath(state.data, path, target.innerHTML.trim());
+      setPath(state.data, path, value);
     } else if (target.dataset.photo) {
       const city = cityById(state.data, target.dataset.city);
       const photo = city?.gallery.find((item) => item.id === target.dataset.photo);
       if (photo) {
-        photo.caption = target.innerHTML.trim();
+        photo[path.replace("photo.", "")] = value;
         touch(city);
       }
     } else if (target.dataset.city) {
       const city = cityById(state.data, target.dataset.city);
       if (city) {
-        setPath(city, path.replace("city.", ""), target.innerHTML.trim());
+        setPath(city, path.replace("city.", ""), value);
         touch(city);
       }
     }
@@ -178,9 +185,10 @@
     if (editable.dataset.photo) {
       const photo = city.gallery.find((item) => item.id === editable.dataset.photo);
       if (!photo) return null;
+      const key = path.replace("photo.", "") || "caption";
       photo.styles = photo.styles || {};
-      photo.styles.caption = photo.styles.caption || {};
-      return photo.styles.caption;
+      photo.styles[key] = photo.styles[key] || {};
+      return photo.styles[key];
     }
 
     const key = path.split(".").pop();
@@ -208,6 +216,7 @@
   }
 
   function syncToolbar(state, editable) {
+    if (!state.editMode) return;
     state.activeEditable = editable;
     const toolbar = $("#textToolbar");
     if (!toolbar || !editable) return;
@@ -258,6 +267,7 @@
       if (target.dataset.addGallery) await addGalleryFiles(city, files);
 
       touch(city);
+      state.data = window.ArchiveStore.normalize(state.data);
       window.ArchiveStore.save(state.data);
       window.ArchiveRender.renderApp(state);
     }, { once: true });
@@ -312,7 +322,10 @@
     $("#editToggle").textContent = state.editMode ? "完成编辑" : "编辑模式";
     window.ArchiveRender.setEditable(state.editMode);
     document.body.classList.toggle("edit-on", state.editMode);
-    if (!state.editMode) $("#textToolbar").classList.remove("show");
+    if (!state.editMode) {
+      state.activeEditable = null;
+      $("#textToolbar")?.classList.remove("show");
+    }
   }
 
   function bindGlobalActions(state) {
@@ -322,6 +335,7 @@
       const upload = event.target.closest("[data-upload-card], [data-upload-cover], [data-upload-gallery], [data-add-gallery]");
       if (upload) {
         event.preventDefault();
+        if (!state.editMode) return;
         await uploadToTarget(state, upload);
         return;
       }
@@ -331,18 +345,18 @@
       const name = action.dataset.action;
 
       if (name === "home") window.ArchiveApp.showHome();
-      if (name === "add-city") openCityEditor(state);
-      if (name === "edit-city") openCityEditor(state, cityById(state.data, action.dataset.id));
+      if (name === "add-city" && state.editMode) openCityEditor(state);
+      if (name === "edit-city" && state.editMode) openCityEditor(state, cityById(state.data, action.dataset.id));
       if (name === "save-city") {
         event.preventDefault();
         await saveCityDialog(state);
       }
-      if (name === "delete-city") deleteCity(state, action.dataset.id);
-      if (name === "move-city-up") moveCity(state, action.dataset.id, "up");
-      if (name === "move-city-down") moveCity(state, action.dataset.id, "down");
-      if (name === "delete-photo") deletePhoto(state, action.dataset.city, action.dataset.photo);
-      if (name === "move-photo-left") movePhoto(state, action.dataset.city, action.dataset.photo, "left");
-      if (name === "move-photo-right") movePhoto(state, action.dataset.city, action.dataset.photo, "right");
+      if (name === "delete-city" && state.editMode) deleteCity(state, action.dataset.id);
+      if (name === "move-city-up" && state.editMode) moveCity(state, action.dataset.id, "up");
+      if (name === "move-city-down" && state.editMode) moveCity(state, action.dataset.id, "down");
+      if (name === "delete-photo" && state.editMode) deletePhoto(state, action.dataset.city, action.dataset.photo);
+      if (name === "move-photo-left" && state.editMode) movePhoto(state, action.dataset.city, action.dataset.photo, "left");
+      if (name === "move-photo-right" && state.editMode) movePhoto(state, action.dataset.city, action.dataset.photo, "right");
       if (name === "export") window.ArchiveStore.exportJson(state.data);
       if (name === "import") $("#importInput")?.click();
       if (name === "top") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -361,8 +375,8 @@
     });
 
     document.addEventListener("input", (event) => {
-      if (event.target.matches(".editable")) saveEditable(state, event.target);
-      if (event.target.matches("[data-style]")) applyStyleControl(state, event.target);
+      if (event.target.matches(".editable") && state.editMode) saveEditable(state, event.target);
+      if (event.target.matches("[data-style]") && state.editMode) applyStyleControl(state, event.target);
     });
 
     $("#importInput")?.addEventListener("change", async (event) => {
