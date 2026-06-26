@@ -26,6 +26,7 @@
     const key = adminKey();
     const response = await fetch(`${base}${path}`, {
       ...options,
+      credentials: "include",
       headers: {
         "content-type": "application/json",
         ...(key ? { authorization: `Bearer ${key}` } : {}),
