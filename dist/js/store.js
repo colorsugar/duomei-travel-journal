@@ -147,7 +147,6 @@
         imageQuality: .82,
         defaultBackground: "art",
         animation: "smooth",
-        cursor: "artistic",
         galleryLayout: "auto",
         heroStyle: "art",
         language: "zh-CN",

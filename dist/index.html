@@ -4,25 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>多美 | Travel Journal</title>
-  <link rel="stylesheet" href="./css/archive.css?v=20260627-v4-polish">
+  <link rel="stylesheet" href="./css/archive.css?v=20260627-v5-1">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
-  <div class="cursor-trail" aria-hidden="true"></div>
-  <div class="cursor-icon" aria-hidden="true"></div>
   <div class="reading-progress" aria-hidden="true"><span></span></div>
 
   <header class="topbar">
     <button class="brand" type="button" data-action="home">多美</button>
     <div class="topbar-actions">
-      <button class="pill" type="button" data-view="journey">Journey</button>
-      <button class="pill" type="button" data-view="tags">Tags</button>
-      <button class="pill" type="button" data-view="stats">Stats</button>
+      <button class="pill" type="button" data-view="journey">旅程</button>
+      <button class="pill" type="button" data-view="tags">标签</button>
+      <button class="pill" type="button" data-view="stats">统计</button>
       <button class="pill edit-only admin-only" type="button" data-action="export">导出 JSON</button>
       <button class="pill edit-only admin-only" type="button" data-action="import">导入 JSON</button>
       <button class="pill edit-only admin-only" type="button" data-action="undo">撤销</button>
-      <button class="pill admin-only admin-mode-indicator" id="adminDashboard" type="button">Back to Studio</button>
+      <button class="pill admin-only admin-mode-indicator" id="adminDashboard" type="button">返回后台</button>
+      <button id="adminEntry" class="pill admin-access" type="button">进入后台</button>
       <span class="pill admin-status" id="adminStatus">后台已连接</span>
       <button class="pill admin-only" id="adminLogout" type="button">退出管理</button>
       <input id="importInput" class="sr-file" type="file" accept="application/json">
@@ -97,15 +96,21 @@
   <footer class="footer">多美 © 2026</footer>
 
   <div class="float-panel">
-    <button type="button" data-action="top">Top</button>
-    <button type="button" data-action="random">Random</button>
-    <button type="button" data-action="next">Next</button>
+    <button type="button" data-action="top">顶部</button>
+    <button type="button" data-action="random">随机</button>
+    <button type="button" data-action="next">下一篇</button>
   </div>
 
-  <button id="adminEntry" class="admin-entry hidden-admin-entry" type="button" aria-hidden="true" tabindex="-1">Admin</button>
   <button id="quickAddCity" class="quick-add edit-only admin-only" type="button" data-action="add-city">＋ 添加城市</button>
   <button id="editToggle" class="edit-toggle admin-only" type="button" aria-pressed="false">编辑模式</button>
   <button id="adminPublish" class="publish-toggle edit-only admin-only" type="button">发布</button>
+  <nav id="editActionBar" class="edit-action-bar edit-only admin-only" aria-label="编辑操作">
+    <button type="button" data-editor-action="save">保存</button>
+    <button type="button" data-editor-action="cancel">取消</button>
+    <button type="button" data-editor-action="back">返回</button>
+    <button type="button" data-action="undo">撤销</button>
+    <button type="button" data-editor-action="defaults">恢复默认</button>
+  </nav>
   <aside id="uploadProgress" class="upload-progress" aria-live="polite" hidden>
     <header><strong id="uploadProgressTitle">处理图片</strong><span id="uploadProgressCount">0/0</span></header>
     <div class="progress-track"><span id="uploadProgressBar"></span></div>
@@ -161,14 +166,14 @@
           <div><strong>Duomei</strong><small>Travel Studio</small></div>
         </header>
         <nav class="studio-nav" aria-label="Studio navigation">
-          <button class="active" type="button" data-studio-view="studio" data-icon="house"><span>Studio</span></button>
-          <button type="button" data-studio-view="journey" data-icon="compass"><span>Journey</span></button>
-          <button type="button" data-studio-view="media" data-icon="image"><span>Media</span></button>
-          <button type="button" data-studio-view="home" data-icon="layout"><span>Home</span></button>
-          <button type="button" data-studio-view="repository" data-icon="archive"><span>Repository</span></button>
-          <button type="button" data-studio-view="health" data-icon="activity"><span>Health</span></button>
-          <button type="button" data-studio-view="recovery" data-icon="history"><span>Recovery</span></button>
-          <button type="button" data-studio-view="settings" data-icon="settings"><span>Settings</span></button>
+          <button class="active" type="button" data-studio-view="studio" data-icon="house"><span>工作室</span></button>
+          <button type="button" data-studio-view="journey" data-icon="compass"><span>旅程</span></button>
+          <button type="button" data-studio-view="media" data-icon="image"><span>媒体</span></button>
+          <button type="button" data-studio-view="home" data-icon="layout"><span>首页</span></button>
+          <button type="button" data-studio-view="repository" data-icon="archive"><span>存储库</span></button>
+          <button type="button" data-studio-view="health" data-icon="activity"><span>健康状态</span></button>
+          <button type="button" data-studio-view="recovery" data-icon="history"><span>恢复</span></button>
+          <button type="button" data-studio-view="settings" data-icon="settings"><span>设置</span></button>
         </nav>
         <footer>
           <button id="studioCollapse" type="button" data-icon="panel-left"><span>收起导航</span></button>
@@ -180,8 +185,8 @@
           <div><span id="studioBreadcrumb">Duomei Studio</span><strong id="studioViewTitle">Studio</strong></div>
           <div class="studio-toolbar-actions">
             <span class="studio-sync"><i></i> 已连接</span>
-            <button id="studioViewSite" class="studio-command" type="button">View Site</button>
-            <button id="studioToggleEditor" class="studio-command primary" type="button">Enter Editor</button>
+            <button id="studioViewSite" class="studio-command" type="button">浏览网站</button>
+            <button id="studioToggleEditor" class="studio-command primary" type="button">进入编辑</button>
             <button id="dashboardClose" class="dialog-close" type="button" data-icon="x" aria-label="关闭"></button>
           </div>
         </header>
@@ -191,15 +196,15 @@
               <p id="studioGreeting">欢迎回来，多美。</p>
               <h2 id="studioWelcomeLine">今天也继续记录旅程吧。</h2>
               <div class="welcome-meta">
-                <span><strong id="daysSincePublish">--</strong> Days Since First Publish</span>
+                <span><strong id="daysSincePublish">--</strong> 首次发布至今天数</span>
                 <span><strong id="welcomeJourneys">--</strong> Journey</span>
-                <span><strong id="welcomePhotos">--</strong> Photos</span>
+                <span><strong id="welcomePhotos">--</strong> 照片</span>
               </div>
             </header>
             <div class="dashboard-overview">
               <section class="health-card dashboard-tile">
                 <div id="healthRing" class="health-ring"><div><strong id="healthScore">--</strong><small>/ 100</small></div></div>
-                <div><span>Health Score</span><h3 id="healthLabel">正在检查</h3><p id="healthAdvice">正在读取档案状态</p></div>
+                <div><span>健康评分</span><h3 id="healthLabel">正在检查</h3><p id="healthAdvice">正在读取档案状态</p></div>
               </section>
               <section class="storage-card dashboard-tile">
                 <header><div><span>Repository</span><h3 id="repositoryUsage">正在估算</h3></div><strong id="repositoryPercent">0%</strong></header>
@@ -223,7 +228,8 @@
               <section><span>最近发布</span><strong id="dashboardPublish">--</strong><small id="dashboardCommit">等待记录</small></section>
             </div>
             <section class="studio-publish-card">
-              <div><span>Publish Status</span><h3 id="studioPublishTitle">作品已与 GitHub 同步</h3><p id="studioPublishText">只有进入编辑模式并点击发布，线上网站才会更新。</p></div>
+              <div><span>发布状态</span><h3 id="studioPublishTitle">作品已与 GitHub 同步</h3><p id="studioPublishText">只有进入编辑模式并点击发布，线上网站才会更新。</p></div>
+              <button class="dashboard-action primary" id="studioPublishNow" type="button" data-icon="upload" hidden><strong>立即发布</strong><span>同步图片、JSON 与 GitHub Pages</span></button>
               <button class="dashboard-action primary" id="dashboardContinue" type="button" data-icon="pencil"><strong>继续编辑</strong><span>进入安全编辑模式</span></button>
             </section>
           </section>
@@ -245,7 +251,7 @@
         <label>日期<input id="cityPublished" placeholder="2026.06"></label>
         <label>地点<input id="cityPlace" placeholder="eg. Osaka, Japan"></label>
         <label>分类<input id="cityCategory" placeholder="eg. Travel"></label>
-        <label>Gallery 布局<select id="cityGalleryLayout"><option value="auto">Auto Layout</option><option value="masonry">Masonry</option><option value="justified">Justified</option><option value="fixed">Fixed Grid</option></select></label>
+        <label>照片布局<select id="cityGalleryLayout"><option value="auto">自动布局</option><option value="masonry">瀑布流</option><option value="justified">两端对齐</option><option value="fixed">固定网格</option></select></label>
         <label class="wide">Tag
           <div class="tag-editor">
             <div id="cityTagChips" class="tag-chip-list"></div>
@@ -274,23 +280,28 @@
       </header>
       <div id="cropStage" class="crop-stage">
         <img id="cropImage" alt="">
-        <div class="crop-frame" aria-hidden="true"></div>
+        <div class="crop-frame" aria-label="裁剪范围">
+          <i data-crop-handle="nw"></i><i data-crop-handle="n"></i><i data-crop-handle="ne"></i>
+          <i data-crop-handle="e"></i><i data-crop-handle="se"></i><i data-crop-handle="s"></i>
+          <i data-crop-handle="sw"></i><i data-crop-handle="w"></i>
+        </div>
       </div>
       <input id="cropZoom" class="crop-range" type="range" min="1" max="3" step=".01" value="1">
       <label class="crop-aspect-label">裁剪比例
         <select id="cropAspect">
-          <option value="original">Original</option>
+          <option value="original">原始比例</option>
           <option value="1">1:1</option>
           <option value="1.333333">4:3</option>
           <option value="1.5">3:2</option>
           <option value="1.777778">16:9</option>
           <option value=".5625">9:16</option>
           <option value="2.333333">21:9</option>
-          <option value="free">Free Crop</option>
+          <option value="free">自由裁剪</option>
         </select>
       </label>
       <footer class="dialog-actions">
         <button class="pill" value="cancel" data-action="crop-cancel">取消</button>
+        <button class="pill" type="button" data-action="crop-rotate">旋转 90°</button>
         <button class="pill" type="button" data-action="crop-reset">重置</button>
         <button class="pill primary" type="button" data-action="crop-save">保存图片</button>
       </footer>
@@ -298,7 +309,7 @@
   </dialog>
 
   <div id="lightbox" class="lightbox" aria-hidden="true">
-    <button type="button" class="lightbox-back" data-action="lightbox-close">‹ Back to Journey</button>
+    <button type="button" class="lightbox-back" data-action="lightbox-close">‹ 返回当前旅程</button>
     <button type="button" class="lightbox-close" data-action="lightbox-close" aria-label="关闭">×</button>
     <button type="button" class="lightbox-nav prev" data-action="lightbox-prev">‹</button>
     <div class="lightbox-stage">
@@ -311,15 +322,15 @@
     <p id="lightboxCaption"></p>
   </div>
 
-  <script src="./js/data.js?v=20260627-v4-polish"></script>
-  <script src="./js/store.js?v=20260627-v4-polish"></script>
-  <script src="./js/image.js?v=20260627-v4-polish"></script>
-  <script src="./js/render.js?v=20260627-v4-polish"></script>
-  <script src="./js/editor.js?v=20260627-v4-polish"></script>
-  <script src="./js/interactions.js?v=20260627-v4-polish"></script>
-  <script src="./js/cms-client.js?v=20260627-v4-polish"></script>
-  <script src="./js/manager.js?v=20260627-v4-polish"></script>
-  <script src="./js/admin.js?v=20260627-v4-polish"></script>
-  <script src="./js/app.js?v=20260627-v4-polish"></script>
+  <script src="./js/data.js?v=20260627-v5-1"></script>
+  <script src="./js/store.js?v=20260627-v5-1"></script>
+  <script src="./js/image.js?v=20260627-v5-1"></script>
+  <script src="./js/render.js?v=20260627-v5-1"></script>
+  <script src="./js/editor.js?v=20260627-v5-1"></script>
+  <script src="./js/interactions.js?v=20260627-v5-1"></script>
+  <script src="./js/cms-client.js?v=20260627-v5-1"></script>
+  <script src="./js/manager.js?v=20260627-v5-1"></script>
+  <script src="./js/admin.js?v=20260627-v5-1"></script>
+  <script src="./js/app.js?v=20260627-v5-1"></script>
 </body>
 </html>

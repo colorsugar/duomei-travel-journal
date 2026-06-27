@@ -24,7 +24,9 @@
           y: 0,
           scale: 1,
           dragging: false,
-          pointers: new Map()
+          pointers: new Map(),
+          freeFrame: null,
+          cropAction: ""
         };
         state.cropRatio = img.naturalWidth / img.naturalHeight;
         image().src = src;
@@ -47,6 +49,10 @@
 
   function frame() {
     const rect = stage().getBoundingClientRect();
+    if (state?.cropRatio === "free" && state.freeFrame) {
+      applyFrame(state.freeFrame);
+      return { ...state.freeFrame };
+    }
     const maxWidth = rect.width * .84;
     const maxHeight = rect.height * .84;
     const ratio = state?.cropRatio || maxWidth / maxHeight;
@@ -57,15 +63,19 @@
       width = height * ratio;
     }
     const result = { x: (rect.width - width) / 2, y: (rect.height - height) / 2, width, height };
-    const frameNode = document.querySelector(".crop-frame");
-    if (frameNode) {
-      frameNode.style.inset = "auto";
-      frameNode.style.left = `${result.x}px`;
-      frameNode.style.top = `${result.y}px`;
-      frameNode.style.width = `${result.width}px`;
-      frameNode.style.height = `${result.height}px`;
-    }
+    applyFrame(result);
     return result;
+  }
+
+  function applyFrame(value) {
+    const frameNode = document.querySelector(".crop-frame");
+    if (!frameNode) return;
+    frameNode.style.inset = "auto";
+    frameNode.style.left = `${value.x}px`;
+    frameNode.style.top = `${value.y}px`;
+    frameNode.style.width = `${value.width}px`;
+    frameNode.style.height = `${value.height}px`;
+    frameNode.classList.toggle("is-free", state?.cropRatio === "free");
   }
 
   function fit() {
@@ -79,6 +89,73 @@
     state.y = 0;
     state.scale = 1;
     update();
+  }
+
+  function initialFreeFrame() {
+    const rect = stage().getBoundingClientRect();
+    state.freeFrame = {
+      x: rect.width * .08,
+      y: rect.height * .08,
+      width: rect.width * .84,
+      height: rect.height * .84
+    };
+  }
+
+  function resizeFreeFrame(event) {
+    const rect = stage().getBoundingClientRect();
+    const start = state.frameStart;
+    const dx = event.clientX - state.startX;
+    const dy = event.clientY - state.startY;
+    const handle = state.cropAction;
+    let left = start.x;
+    let top = start.y;
+    let right = start.x + start.width;
+    let bottom = start.y + start.height;
+    if (handle.includes("w")) left += dx;
+    if (handle.includes("e")) right += dx;
+    if (handle.includes("n")) top += dy;
+    if (handle.includes("s")) bottom += dy;
+    if (handle === "move") {
+      const width = start.width;
+      const height = start.height;
+      left = Math.min(rect.width - width, Math.max(0, start.x + dx));
+      top = Math.min(rect.height - height, Math.max(0, start.y + dy));
+      right = left + width;
+      bottom = top + height;
+    } else {
+      left = Math.max(0, Math.min(left, right - 72));
+      top = Math.max(0, Math.min(top, bottom - 72));
+      right = Math.min(rect.width, Math.max(right, left + 72));
+      bottom = Math.min(rect.height, Math.max(bottom, top + 72));
+    }
+    state.freeFrame = { x: left, y: top, width: right - left, height: bottom - top };
+    applyFrame(state.freeFrame);
+  }
+
+  async function rotateSource() {
+    if (!state) return;
+    const source = image();
+    const canvas = document.createElement("canvas");
+    canvas.width = state.naturalHeight;
+    canvas.height = state.naturalWidth;
+    const ctx = canvas.getContext("2d");
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(source, -state.naturalWidth / 2, -state.naturalHeight / 2);
+    const rotated = canvas.toDataURL("image/webp", .94);
+    if (state.src?.startsWith("blob:")) URL.revokeObjectURL(state.src);
+    state.src = rotated;
+    state.naturalWidth = canvas.width;
+    state.naturalHeight = canvas.height;
+    state.freeFrame = null;
+    image().src = rotated;
+    await image().decode().catch(() => {});
+    if (aspect().value === "original") state.cropRatio = state.naturalWidth / state.naturalHeight;
+    if (aspect().value === "free") {
+      state.cropRatio = "free";
+      initialFreeFrame();
+    }
+    fit();
   }
 
   function update() {
@@ -218,6 +295,17 @@
     s.addEventListener("pointerdown", (event) => {
       if (!state) return;
       event.preventDefault();
+      const handle = event.target.closest("[data-crop-handle]");
+      const freeFrame = event.target.closest(".crop-frame");
+      if (state.cropRatio === "free" && (handle || freeFrame)) {
+        state.cropAction = handle?.dataset.cropHandle || "move";
+        state.frameStart = { ...frame() };
+        state.startX = event.clientX;
+        state.startY = event.clientY;
+        state.dragging = true;
+        s.setPointerCapture(event.pointerId);
+        return;
+      }
       state.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       state.dragging = true;
       state.startX = event.clientX; state.startY = event.clientY;
@@ -232,6 +320,10 @@
     s.addEventListener("pointermove", (event) => {
       if (!state?.dragging) return;
       event.preventDefault();
+      if (state.cropAction) {
+        resizeFreeFrame(event);
+        return;
+      }
       state.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (state.pointers.size >= 2) {
         const ratio = distance() / Math.max(1, state.pinchStart || distance());
@@ -248,6 +340,7 @@
       if (!state) return;
       state.pointers.delete(event.pointerId);
       state.dragging = false;
+      state.cropAction = "";
       s.classList.remove("dragging");
       try { s.releasePointerCapture(event.pointerId); } catch {}
     };
@@ -268,13 +361,20 @@
     zoom().addEventListener("input", () => { if (state) { state.scale = Number(zoom().value); update(); } });
     aspect().addEventListener("change", () => {
       if (!state) return;
-      state.cropRatio = ["original", "free"].includes(aspect().value)
-        ? state.naturalWidth / state.naturalHeight
-        : Number(aspect().value);
+      if (aspect().value === "free") {
+        state.cropRatio = "free";
+        initialFreeFrame();
+      } else {
+        state.freeFrame = null;
+        state.cropRatio = aspect().value === "original"
+          ? state.naturalWidth / state.naturalHeight
+          : Number(aspect().value);
+      }
       fit();
     });
     document.querySelector('[data-action="crop-save"]').addEventListener("click", saveCrop);
     document.querySelector('[data-action="crop-reset"]').addEventListener("click", fit);
+    document.querySelector('[data-action="crop-rotate"]').addEventListener("click", rotateSource);
     document.querySelector('[data-action="crop-cancel"]').addEventListener("click", () => finish(""));
   }
 

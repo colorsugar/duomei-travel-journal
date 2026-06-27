@@ -22,7 +22,11 @@
 
   async function api(path, options = {}) {
     const base = workerUrl();
-    if (!base) throw new Error("请先填写 Cloudflare Worker 地址");
+    if (!base) {
+      const error = new Error("请先填写 Cloudflare Worker 地址");
+      error.code = "WORKER_URL_MISSING";
+      throw error;
+    }
 
     const key = adminKey();
     const timeoutMs = options.timeoutMs || 180000;
@@ -38,20 +42,36 @@
       const response = await fetch(`${base}${path}`, {
         ...options,
         signal: controller.signal,
-        headers
+        headers,
+        mode: "cors",
+        cache: "no-store",
+        credentials: "omit",
+        referrerPolicy: "no-referrer"
       });
       const text = await response.text();
       const payload = text ? JSON.parse(text) : {};
       if (!response.ok || payload.ok === false) {
-        throw new Error(payload.error || `请求失败：${response.status}`);
+        const error = new Error(payload.error || `请求失败：${response.status}`);
+        error.code = "WORKER_RESPONSE";
+        error.status = response.status;
+        throw error;
       }
       return payload;
     } catch (error) {
       if (error.name === "AbortError") {
-        throw new Error("发布超时：后台超过 3 分钟没有响应，请检查 GitHub 是否已有新 commit。");
+        const timeoutError = new Error("后台在限定时间内没有响应");
+        timeoutError.code = "TIMEOUT";
+        throw timeoutError;
       }
       if (error instanceof SyntaxError) {
-        throw new Error("后台返回的不是 JSON，请检查 Worker 是否正常。");
+        const parseError = new Error("后台返回了无法识别的数据");
+        parseError.code = "INVALID_RESPONSE";
+        throw parseError;
+      }
+      if (error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(error.message || "")) {
+        const networkError = new Error("浏览器无法连接 Cloudflare Worker");
+        networkError.code = "NETWORK";
+        throw networkError;
       }
       throw error;
     } finally {

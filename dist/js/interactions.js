@@ -10,8 +10,6 @@
   let lightboxIndex = 0;
   let lightboxPhotos = [];
 
-  const cursorIcons = ["\u2708", "\u25CC", "\u2316", "\u25C7", "\u2726", "\u25EF"];
-
   function toast(message) {
     const el = $("#toast");
     if (!el) return;
@@ -30,55 +28,6 @@
       }, { threshold: 0.12 });
     }
     $$(".reveal").forEach((el) => observer.observe(el));
-  }
-
-  function initCursor() {
-    const cursor = $(".cursor-icon");
-    const trail = $(".cursor-trail");
-    if (!cursor || !trail || matchMedia("(pointer: coarse)").matches) return;
-
-    document.body.classList.remove("custom-cursor");
-    trail.innerHTML = "";
-
-    let x = window.innerWidth / 2;
-    let y = window.innerHeight / 2;
-    let tx = x;
-    let ty = y;
-    let visible = 0;
-    let iconIndex = 0;
-    let lastSwitch = 0;
-
-    document.addEventListener("pointermove", (event) => {
-      tx = event.clientX;
-      ty = event.clientY;
-      if (!document.body.classList.contains("admin-authenticated") && ["artistic", "minimal"].includes(document.body.dataset.cursorMode)) cursor.style.opacity = "1";
-    }, { passive: true });
-
-    function frame(time) {
-      const cursorMode = document.body.dataset.cursorMode || "artistic";
-      if (document.body.classList.contains("admin-authenticated") || ["off", "normal"].includes(cursorMode)) {
-        visible += (0 - visible) * 0.18;
-        cursor.style.opacity = String(visible);
-        window.setTimeout(() => requestAnimationFrame(frame), 180);
-        return;
-      }
-      x += (tx - x) * 0.42;
-      y += (ty - y) * 0.42;
-      visible += ((cursorMode === "minimal" ? .24 : .38) - visible) * 0.1;
-      cursor.style.opacity = String(visible);
-      cursor.style.transform = `translate3d(${x + 18}px, ${y + 16}px, 0) scale(.72) rotate(${Math.sin(time / 1600) * 5}deg)`;
-      if (cursorMode === "minimal") {
-        cursor.textContent = "·";
-      } else if (time - lastSwitch > 33000) {
-        iconIndex = (iconIndex + 1) % cursorIcons.length;
-        cursor.textContent = cursorIcons[iconIndex];
-        lastSwitch = time;
-      }
-      requestAnimationFrame(frame);
-    }
-
-    cursor.textContent = cursorIcons[0];
-    requestAnimationFrame(frame);
   }
 
   function bindCardMotion() {
@@ -320,7 +269,6 @@
   function init(state) {
     stateRef = state;
     window.ArchiveUI = { toast };
-    initCursor();
     bindCardMotion();
     bindLightbox();
     bindFilters();

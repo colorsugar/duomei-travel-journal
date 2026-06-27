@@ -252,9 +252,9 @@
     document.getElementById("dashboardRange").textContent = `${sizeLabel(largest)} / ${sizeLabel(smallest)}`;
     document.getElementById("dashboardPublish").textContent = lastPublish ? relativeTime(lastPublish.savedAt) : "暂无";
     document.getElementById("dashboardCommit").textContent = lastPublish?.status === "waiting-pages"
-      ? "Waiting for Pages"
+      ? "正在等待 Pages"
       : lastPublish?.commit
-        ? `Published · ${lastPublish.commit.slice(0, 7)}`
+        ? `已发布 · ${lastPublish.commit.slice(0, 7)}`
         : "等待记录";
     document.getElementById("repositoryUsage").textContent = `${sizeLabel(repositoryBytes)} / 1 GB`;
     document.getElementById("repositoryPercent").textContent = `${repositoryPercent.toFixed(1)}%`;
@@ -262,7 +262,7 @@
     document.getElementById("estimatedPhotos").textContent = `预计约 ${Math.max(0, Math.floor((repositoryLimit - repositoryBytes) / averageUpload))} 张`;
     animateNumber(document.getElementById("healthScore"), info.score);
     document.getElementById("healthRing").style.setProperty("--score", info.score);
-    document.getElementById("healthLabel").textContent = info.score >= 90 ? "Excellent" : info.score >= 75 ? "Good" : "需要整理";
+    document.getElementById("healthLabel").textContent = info.score >= 90 ? "优秀" : info.score >= 75 ? "良好" : "需要整理";
     document.getElementById("healthAdvice").textContent = info.pending
       ? `${info.pending} 张图片等待发布`
       : info.emptySlots
@@ -278,6 +278,8 @@
       : info.pending
         ? "进入编辑模式完成发布后，线上作品集才会更新。"
         : "本地档案、GitHub 与当前发布状态一致。";
+    const publishNow = document.getElementById("studioPublishNow");
+    if (publishNow) publishNow.hidden = !info.pending && !window.ArchiveApp.state.hasUnpublishedChanges;
     const pendingJourney = publicJourneys.find((city) => [city.coverImage, ...(city.gallery || []).map((photo) => photo.src)].some((src) => String(src || "").startsWith("data:")));
     const assistant = [
       info.pending ? `今天还有 ${info.pending} 张图片等待发布。` : "当前没有等待发布的图片。",
@@ -306,11 +308,11 @@
     panel.hidden = false;
     if (type === "journey") {
       const journeys = data.journeys.filter((city) => city.status !== "asset");
-      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Archive</span><h2>Journey</h2><p>在 Studio 内选择、预览和编辑旅行档案。</p></div><button class="pill edit-only" data-action="add-city">添加 Journey</button></header>
+      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">旅行档案</span><h2>旅程</h2><p>在工作室内选择、预览和编辑旅行档案。</p></div><button class="pill edit-only" data-action="add-city">添加旅程</button></header>
         <div class="studio-journey-list">${journeys.map((city, index) => `<article>
           <span class="journey-index">${String(index + 1).padStart(2, "0")}</span>
           <div class="journey-preview">${city.cardImage || city.coverImage ? `<img src="${city.cardThumb || city.coverThumb || city.cardImage || city.coverImage}" alt="">` : ""}</div>
-          <div><strong>${city.title}</strong><span>${city.place || "未填写地点"} · ${city.published || "未填写日期"}</span><small>${(city.gallery || []).filter((photo) => photo.src).length} Photos · ${(city.tags || []).length} Tags</small></div>
+          <div><strong>${city.title}</strong><span>${city.place || "未填写地点"} · ${city.published || "未填写日期"}</span><small>${(city.gallery || []).filter((photo) => photo.src).length} 张照片 · ${(city.tags || []).length} 个标签</small></div>
           <span class="visibility-badge ${city.status === "public" ? "visible" : "hidden"}">${city.status === "public" ? "Public" : city.status}</span>
           <div class="journey-row-actions"><button type="button" data-journey-view="${city.slug}">预览</button><button class="edit-only" type="button" data-action="edit-city" data-id="${city.id}">编辑</button></div>
         </article>`).join("") || "<p>还没有 Journey。</p>"}</div>`;
@@ -321,7 +323,7 @@
         <div class="media-batch edit-only"><span>批量操作</span><button type="button" data-media-download-selected>下载</button><button type="button" data-media-publish-selected>发布</button><button class="danger" type="button" data-media-delete-selected>删除</button></div>
         <div class="media-manager-grid">${info.media.map((item, mediaIndex) => {
           const status = item.src.startsWith("data:") ? "pending" : publishState?.status === "waiting-pages" ? "waiting" : "published";
-          const statusLabel = status === "pending" ? "未发布" : status === "waiting" ? "Waiting for Pages" : "已发布";
+          const statusLabel = status === "pending" ? "未发布" : status === "waiting" ? "正在等待 Pages" : "已发布";
           const compression = item.originalBytes && item.outputBytes ? Math.max(0, Math.round((1 - item.outputBytes / item.originalBytes) * 100)) : null;
           return `<article>
           <label class="media-select edit-only"><input type="checkbox" data-media-select data-city="${item.cityId}" data-photo="${item.id || ""}" data-kind="${item.type}"><span></span></label>
@@ -374,7 +376,7 @@
       ];
       panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">System</span><h2>Health</h2><p>作品档案、图片、缓存与恢复能力的综合状态。</p></div></header>
         <section class="health-detail"><div class="health-ring large" style="--score:${info.score}"><div><strong>${info.score}</strong><small>/ 100</small></div></div>
-          <div><h3>${info.score >= 90 ? "Excellent" : info.score >= 75 ? "Good" : "Needs attention"}</h3>${advice.map((text, index) => `<p><span class="health-state ${index === 0 && info.pending ? "warning" : "good"}"></span>${text}</p>`).join("")}</div>
+          <div><h3>${info.score >= 90 ? "优秀" : info.score >= 75 ? "良好" : "需要关注"}</h3>${advice.map((text, index) => `<p><span class="health-state ${index === 0 && info.pending ? "warning" : "good"}"></span>${text}</p>`).join("")}</div>
         </section>`;
     }
     if (type === "home") {
@@ -402,8 +404,8 @@
         </section>
         <div class="home-manager-list">${sections.map((section, index) => `<article>
           <span class="home-order">${String(index + 1).padStart(2, "0")}</span>
-          <div><strong>${section.title || "未命名区块"}</strong><span>${section.eyebrow || "No eyebrow"} · ${section.layout}</span></div>
-          <span class="visibility-badge ${section.visible ? "visible" : "hidden"}">${section.visible ? "Visible" : "Hidden"}</span>
+          <div><strong>${section.title || "未命名区块"}</strong><span>${section.eyebrow || "无小标题"} · ${section.layout}</span></div>
+          <span class="visibility-badge ${section.visible ? "visible" : "hidden"}">${section.visible ? "显示" : "隐藏"}</span>
           <div class="home-manager-actions edit-only"><button data-action="move-home-up" data-id="${section.id}">↑</button><button data-action="move-home-down" data-id="${section.id}">↓</button><button data-action="layout-home" data-id="${section.id}">布局</button><button data-action="toggle-home" data-id="${section.id}">${section.visible ? "隐藏" : "显示"}</button></div>
           <div class="home-button-fields edit-only"><label>Button<input data-home-button-label="${section.id}" value="${String(section.buttonLabel || "").replace(/"/g, "&quot;")}" placeholder="按钮文字"></label><label>URL<input data-home-button-url="${section.id}" value="${String(section.buttonUrl || "").replace(/"/g, "&quot;")}" placeholder="https://..."></label></div>
         </article>`).join("") || "<p>还没有首页区块。</p>"}</div>
@@ -415,21 +417,20 @@
       updateHeroPreview();
     }
     if (type === "settings") {
-      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Preferences</span><h2>Settings</h2><p>当前 Studio 的连接与编辑状态。</p></div></header>
+      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">偏好设置</span><h2>设置</h2><p>当前工作室的连接与编辑状态。</p></div></header>
         <div class="settings-list">
-          <section><div><strong>Cloudflare Worker</strong><span>${window.ArchiveCMS.workerUrl() || "未配置"}</span></div><span class="sync-badge synced">Connected</span></section>
-          <section><div><strong>管理员会话</strong><span>密钥仅保存在本次浏览器会话</span></div><span class="sync-badge synced">Protected</span></section>
-          <section><div><strong>编辑安全模式</strong><span>浏览与编辑保持分离</span></div><span class="sync-badge ${window.ArchiveApp.state.editMode ? "pending" : "synced"}">${window.ArchiveApp.state.editMode ? "Editing" : "Browsing"}</span></section>
+          <section><div><strong>Cloudflare Worker</strong><span>${window.ArchiveCMS.workerUrl() || "未配置"}</span></div><span class="sync-badge synced">已连接</span></section>
+          <section><div><strong>管理员会话</strong><span>密钥仅保存在本次浏览器会话</span></div><span class="sync-badge synced">受保护</span></section>
+          <section><div><strong>编辑安全模式</strong><span>浏览与编辑保持分离</span></div><span class="sync-badge ${window.ArchiveApp.state.editMode ? "pending" : "synced"}">${window.ArchiveApp.state.editMode ? "编辑中" : "浏览中"}</span></section>
         </div>
         <div class="settings-grid">
           <label>Theme<select data-site-setting="theme"><option value="light">Light</option><option value="dark">Dark</option><option value="auto">Auto</option></select></label>
           <label>Image Quality<select data-site-setting="imageQuality"><option value=".75">Balanced · 75%</option><option value=".82">High · 82%</option><option value=".9">Maximum · 90%</option></select></label>
           <label>Default Background<select data-site-setting="defaultBackground"><option value="art">Travel Art</option><option value="linear">Linear</option><option value="mesh">Mesh</option><option value="aurora">Aurora</option><option value="glass">Glass</option></select></label>
           <label>Animation<select data-site-setting="animation"><option value="normal">Normal</option><option value="smooth">Smooth</option><option value="performance">Performance</option></select></label>
-          <label>Cursor<select data-site-setting="cursor"><option value="off">Off</option><option value="normal">Normal</option><option value="artistic">Artistic</option><option value="minimal">Minimal</option></select></label>
-          <label>Gallery Layout<select data-site-setting="galleryLayout"><option value="auto">Auto Layout</option><option value="masonry">Masonry</option><option value="justified">Justified</option><option value="fixed">Fixed Grid</option></select></label>
+          <label>照片布局<select data-site-setting="galleryLayout"><option value="auto">自动布局</option><option value="masonry">瀑布流</option><option value="justified">两端对齐</option><option value="fixed">固定网格</option></select></label>
           <label>Hero Style<select data-site-setting="heroStyle"><option value="art">Travel Art</option><option value="image">Image</option><option value="glass">Glass</option></select></label>
-          <label>Language<select data-site-setting="language"><option value="zh-CN">中文</option><option value="en">English</option><option value="ja">日本語</option></select></label>
+          <label>语言<select data-site-setting="language"><option value="zh-CN">中文</option><option value="en" disabled>English（开发中）</option><option value="ja" disabled>日本語（开发中）</option></select></label>
         </div>`;
       panel.querySelectorAll("[data-site-setting]").forEach((control) => {
         control.value = String(data.settings[control.dataset.siteSetting] ?? "");
@@ -437,7 +438,7 @@
     }
     if (type === "recovery") {
       const list = await backups();
-      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Safety</span><h2>Recovery</h2><p>自动保留最近 10 次本地备份。</p></div><button class="pill edit-only" type="button" data-manual-backup>创建手动备份</button></header>
+      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">数据安全</span><h2>恢复</h2><p>自动保留最近 10 次本地备份。</p></div><button class="pill edit-only" type="button" data-manual-backup>创建手动备份</button></header>
         <div class="recovery-list">${list.map((item) => {
           const itemInfo = metrics(item.data);
           const kind = item.reason.includes("发布前") ? "发布前备份" : item.reason.includes("手动") ? "手动备份" : "自动备份";
@@ -459,7 +460,7 @@
     const shell = document.querySelector(".studio-shell");
     document.querySelectorAll("[data-studio-view]").forEach((button) => button.classList.toggle("active", button.dataset.studioView === type));
     shell?.classList.remove("sidebar-open");
-    const titles = { studio: "Studio", media: "Media", home: "Home", repository: "Repository", health: "Health", recovery: "Recovery", settings: "Settings" };
+    const titles = { studio: "工作室", journey: "旅程", media: "媒体", home: "首页", repository: "存储库", health: "健康状态", recovery: "恢复", settings: "设置" };
     document.getElementById("studioViewTitle").textContent = titles[type] || "Studio";
     home.hidden = type !== "studio";
     panel.hidden = type === "studio";
@@ -551,6 +552,10 @@
     document.getElementById("studioToggleEditor")?.addEventListener("click", () => {
       document.getElementById("editToggle")?.click();
     });
+    document.getElementById("studioPublishNow")?.addEventListener("click", () => {
+      closeDashboard();
+      document.getElementById("adminPublish")?.click();
+    });
     document.getElementById("studioViewSite")?.addEventListener("click", () => {
       if (window.ArchiveApp.state.editMode) document.getElementById("editToggle")?.click();
       closeDashboard();
@@ -601,7 +606,7 @@
         if (!record) return;
         const itemInfo = metrics(record.data);
         const panel = document.getElementById("adminPanel");
-        panel.insertAdjacentHTML("afterbegin", `<aside class="recovery-preview"><button type="button" data-close-preview aria-label="关闭">×</button><span>Recovery Preview</span><h3>${new Date(record.savedAt).toLocaleString()}</h3><p>${record.reason}</p><div><strong>${record.data.journeys.length}</strong><span>Journey</span><strong>${itemInfo.media.length}</strong><span>Photos</span><strong>${sizeLabel(itemInfo.storageBytes)}</strong><span>JSON</span></div></aside>`);
+        panel.insertAdjacentHTML("afterbegin", `<aside class="recovery-preview"><button type="button" data-close-preview aria-label="关闭">×</button><span>恢复点预览</span><h3>${new Date(record.savedAt).toLocaleString()}</h3><p>${record.reason}</p><div><strong>${record.data.journeys.length}</strong><span>旅程</span><strong>${itemInfo.media.length}</strong><span>照片</span><strong>${sizeLabel(itemInfo.storageBytes)}</strong><span>JSON</span></div></aside>`);
       }
       if (event.target.closest("[data-close-preview]")) event.target.closest(".recovery-preview")?.remove();
       if (event.target.closest("[data-manual-backup]")) {

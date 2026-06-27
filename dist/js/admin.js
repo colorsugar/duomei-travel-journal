@@ -4,6 +4,7 @@
   let logoPressTimer = 0;
   let publishing = false;
   let autoSaveTimer = 0;
+  let lastPublishMessage = "";
 
   function toast(message) {
     window.ArchiveUI?.toast(message);
@@ -73,6 +74,37 @@
     }
   }
 
+  function publishFailure(error, stage) {
+    const reason = error?.message || "未知错误";
+    const suggestions = {
+      NETWORK: "检查网络和 Worker 地址，然后点击“重试发布”。iPhone Safari 可切换一次网络后重试。",
+      TIMEOUT: "先查看 GitHub 是否已经生成 Commit；若没有，可安全重试。",
+      INVALID_RESPONSE: "确认 Worker 已部署且地址正确，然后重试。",
+      WORKER_RESPONSE: "后台拒绝了请求，请根据上方原因检查图片大小或仓库权限。",
+      WORKER_URL_MISSING: "重新进入后台并填写 Cloudflare Worker 地址。"
+    };
+    const suggestion = suggestions[error?.code] || "草稿已经保留，可稍后重试；不会丢失本次修改。";
+    const message = `发布失败\n阶段：${stage}\n原因：${reason}\n建议：${suggestion}`;
+    const safe = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[character]);
+    window.ArchiveManager?.failOperation(message);
+    const panel = $("#uploadProgressItems");
+    if (panel) {
+      panel.innerHTML = `
+        <article class="publish-failure">
+          <strong>发布失败</strong>
+          <span>阶段：${safe(stage)}</span>
+          <span>原因：${safe(reason)}</span>
+          <span>建议：${safe(suggestion)}</span>
+          <button type="button" id="retryPublish">重试发布</button>
+        </article>`;
+      $("#uploadProgress")?.removeAttribute("hidden");
+      $("#retryPublish")?.addEventListener("click", () => publish(lastPublishMessage, true).catch(() => {}), { once: true });
+    }
+    toast(`发布失败：${reason}`);
+  }
+
   function archiveFingerprint(archive) {
     return JSON.stringify({
       site: {
@@ -138,15 +170,18 @@
     };
   }
 
-  async function publish() {
+  async function publish(previousMessage = "", isRetry = false) {
     if (publishing) return;
     if (!document.body.classList.contains("admin-authenticated")) {
       openDialog();
       return;
     }
 
-    const message = prompt("发布说明 / Commit Message", "Update Travel Journal");
+    const message = isRetry
+      ? previousMessage
+      : prompt("发布说明 / Commit Message", previousMessage || "Update Travel Journal");
     if (!message) return;
+    lastPublishMessage = message;
 
     const button = $("#adminPublish");
     setPublishing(button, true);
@@ -159,15 +194,18 @@
       "发布完成"
     ];
 
+    let currentStage = "准备发布";
     try {
       window.ArchiveManager?.operationProgress(publishStages, 0, "准备发布");
       if (window.ArchiveManager) {
         window.ArchiveManager.cancelScheduledRecovery();
         await window.ArchiveManager.backup(window.ArchiveApp.state.data, "发布前自动备份").catch(() => {});
       }
+      currentStage = "更新 Journey JSON";
       window.ArchiveManager?.operationProgress(publishStages, 1, "正在更新 JSON");
       toast("正在发布到 GitHub...");
       const archive = window.ArchiveStore.normalize(window.ArchiveApp.state.data);
+      currentStage = "连接 Cloudflare Worker 并上传 GitHub";
       window.ArchiveManager?.operationProgress(publishStages, 2, "GitHub 正在处理");
       const result = await window.ArchiveCMS.api("/api/publish", {
         method: "POST",
@@ -179,6 +217,7 @@
         throw new Error("发布没有返回 commit，草稿已保留");
       }
 
+      currentStage = "读取发布后的数据";
       const syncedArchive = await canonicalArchive(result.archive);
       window.ArchiveApp.state.data = window.ArchiveStore.normalize(syncedArchive);
       window.ArchiveStore.save(window.ArchiveApp.state.data, true);
@@ -193,6 +232,7 @@
       await window.ArchiveManager?.afterPublish("waiting-pages");
 
       window.ArchiveManager?.operationProgress(publishStages, 3, "Commit 已创建，等待 Pages");
+      currentStage = "等待 GitHub Pages 更新";
       const pagesReady = await waitForPages(syncedArchive);
       if (pagesReady) {
         const liveArchive = await fetchPagesArchive();
@@ -208,8 +248,7 @@
         toast(`Commit ${result.commit.slice(0, 7)} 已完成，GitHub Pages 仍在部署`);
       }
     } catch (error) {
-      window.ArchiveManager?.failOperation(error.message);
-      toast(error.message || "发布失败，草稿已保留");
+      publishFailure(error, currentStage);
       throw error;
     } finally {
       setPublishing(button, false);

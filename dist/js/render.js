@@ -111,7 +111,7 @@
   function applySettings(settings = {}) {
     document.body.dataset.theme = settings.theme || "auto";
     document.body.dataset.motion = settings.animation || "smooth";
-    document.body.dataset.cursorMode = settings.cursor || "artistic";
+    delete document.body.dataset.cursorMode;
     document.documentElement.lang = settings.language || "zh-CN";
   }
 

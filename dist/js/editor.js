@@ -4,6 +4,8 @@
   const RECENT_TAGS_KEY = "duomei_recent_tags";
   const undoStack = [];
   let uploadBatch = null;
+  let editSessionSnapshot = "";
+  let editSessionWasDirty = false;
 
   function remember(state) {
     undoStack.push(JSON.stringify(state.data));
@@ -622,11 +624,15 @@
 
   function toggleEditMode(state) {
     if (!document.body.classList.contains("admin-authenticated")) return;
+    if (!state.editMode) {
+      editSessionSnapshot = JSON.stringify(state.data);
+      editSessionWasDirty = Boolean(state.hasUnpublishedChanges);
+    }
     state.editMode = !state.editMode;
     $("#editToggle").setAttribute("aria-pressed", String(state.editMode));
     $("#editToggle").textContent = state.editMode ? "完成编辑" : "编辑模式";
-    if ($("#adminDashboard")) $("#adminDashboard").textContent = "Back to Studio";
-    if ($("#studioToggleEditor")) $("#studioToggleEditor").textContent = state.editMode ? "Exit Editor" : "Enter Editor";
+    if ($("#adminDashboard")) $("#adminDashboard").textContent = "返回后台";
+    if ($("#studioToggleEditor")) $("#studioToggleEditor").textContent = state.editMode ? "退出编辑" : "进入编辑";
     window.ArchiveRender.setEditable(state.editMode);
     document.body.classList.toggle("edit-on", state.editMode);
     window.ArchiveRender.renderApp(state);
@@ -670,6 +676,43 @@
 
   function bindGlobalActions(state) {
     $("#editToggle")?.addEventListener("click", () => toggleEditMode(state));
+    $("#editActionBar")?.addEventListener("click", (event) => {
+      const action = event.target.closest("[data-editor-action]")?.dataset.editorAction;
+      if (!action) return;
+      if (action === "save") {
+        window.ArchiveStore.save(state.data, true);
+        window.ArchiveCMS?.saveDraft(state.data);
+        editSessionSnapshot = JSON.stringify(state.data);
+        window.ArchiveUI?.toast("草稿已保存");
+      }
+      if (action === "cancel") {
+        if (!editSessionSnapshot || !confirm("放弃本次进入编辑后的修改吗？")) return;
+        state.data = window.ArchiveStore.normalize(JSON.parse(editSessionSnapshot));
+        window.ArchiveStore.save(state.data, true);
+        state.hasUnpublishedChanges = editSessionWasDirty;
+        window.ArchiveRender.renderApp(state);
+        toggleEditMode(state);
+        window.ArchiveUI?.toast("本次修改已取消");
+      }
+      if (action === "back") {
+        if (state.editMode) toggleEditMode(state);
+        $("#adminDashboard")?.click();
+      }
+      if (action === "defaults") {
+        if (!confirm("恢复当前文字的默认样式吗？内容不会被删除。")) return;
+        const target = state.activeEditable;
+        const binding = target?.dataset?.bind;
+        if (binding && state.data.styles?.[binding]) {
+          delete state.data.styles[binding];
+          markDirty(state);
+          window.ArchiveStore.save(state.data, true);
+          window.ArchiveRender.renderApp(state);
+          window.ArchiveUI?.toast("已恢复默认样式");
+        } else {
+          window.ArchiveUI?.toast("请先选择一个可编辑文字区域");
+        }
+      }
+    });
 
     document.addEventListener("click", async (event) => {
       if (event.target.closest('[aria-disabled="true"]')) event.preventDefault();
