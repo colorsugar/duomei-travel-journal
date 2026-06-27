@@ -523,5 +523,266 @@
       "uploadedAt": "2026-06-27T11:52:52.208Z"
     },
     "galleryLayout": "auto"
+  },
+  {
+    "id": "journey-mqwxxji7-1782599860736-w3n1gsws",
+    "slug": "journey-mqwxxji7",
+    "title": "好困",
+    "published": "2026-06-27",
+    "updated": "2026-06-27",
+    "views": 1,
+    "category": "Travel",
+    "place": "",
+    "excerpt": "",
+    "tags": [
+      "色号"
+    ],
+    "bodyTop": "",
+    "bodyBottom": "照片会慢慢替换成真实记忆。等以后再翻回来时，它会像一本安静的写真集。",
+    "mapText": "这里以后可以加入 好困 的地图、路线或拍摄地点备注。",
+    "coverImage": "./uploads/20260627223833-journey-mqwxxji7-cover-dfc19182.png",
+    "coverThumb": "./uploads/20260627223833-journey-mqwxxji7-cover-thumb-9d9966c7.png",
+    "cardImage": "./uploads/20260627223833-journey-mqwxxji7-card-9211fa5b.png",
+    "cardThumb": "./uploads/20260627223833-journey-mqwxxji7-card-thumb-88439ff0.png",
+    "theme": {
+      "paper": "rgb(220,219,215)",
+      "cream": "rgb(234,232,226)",
+      "accent": "rgb(194,204,205)",
+      "accent2": "rgb(202,209,201)",
+      "line": "rgba(125, 136, 144, .16)",
+      "shadow": "0 24px 70px rgba(125, 136, 144, .12)",
+      "deepShadow": "0 36px 92px rgba(125, 136, 144, .20)"
+    },
+    "styles": {},
+    "gallery": [
+      {
+        "id": "journey-mqwxxji7-photo-0-1782599860736-z2n8c4x1",
+        "src": "./uploads/20260627223833-journey-mqwxxji7-journey-mqwxxji7-photo-0-1782599860736-z2n8c4x1-94d6c541.png",
+        "thumb": "./uploads/20260627223833-journey-mqwxxji7-journey-mqwxxji7-photo-0-1782599860736-z2n8c4x1-thumb-7ef6932b.png",
+        "title": "",
+        "caption": "照片说明可以在这里编辑。",
+        "alt": "照片说明可以在这里编辑。",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 1800,
+        "height": 1200,
+        "originalBytes": 8982387,
+        "outputBytes": 3426744,
+        "uploadedAt": "2026-06-27T22:37:48.364Z",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "journey-mqwxxji7-photo-1-1782599860736-a9wk91n7",
+        "src": "./uploads/20260627223833-journey-mqwxxji7-journey-mqwxxji7-photo-1-1782599860736-a9wk91n7-cba0cb61.png",
+        "thumb": "./uploads/20260627223833-journey-mqwxxji7-journey-mqwxxji7-photo-1-1782599860736-a9wk91n7-thumb-e3f01a0f.png",
+        "title": "",
+        "caption": "",
+        "alt": "",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 1800,
+        "height": 1200,
+        "originalBytes": 8136986,
+        "outputBytes": 3359184,
+        "uploadedAt": "2026-06-27T22:37:48.693Z",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "journey-mqwxxji7-photo-2-1782599860736-wjsvcvbs",
+        "src": "./uploads/20260627223833-journey-mqwxxji7-journey-mqwxxji7-photo-2-1782599860736-wjsvcvbs-e443c243.png",
+        "thumb": "./uploads/20260627223833-journey-mqwxxji7-journey-mqwxxji7-photo-2-1782599860736-wjsvcvbs-thumb-2ff1cf21.png",
+        "title": "",
+        "caption": "",
+        "alt": "",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 1200,
+        "height": 1800,
+        "originalBytes": 8800695,
+        "outputBytes": 3365964,
+        "uploadedAt": "2026-06-27T22:37:49.025Z",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "journey-mqwxxji7-photo-3-1782599860736-uzrk2vf2",
+        "src": "./uploads/20260627223833-journey-mqwxxji7-journey-mqwxxji7-photo-3-1782599860736-uzrk2vf2-6b947fcc.png",
+        "thumb": "./uploads/20260627223833-journey-mqwxxji7-journey-mqwxxji7-photo-3-1782599860736-uzrk2vf2-thumb-c07927f4.png",
+        "title": "",
+        "caption": "",
+        "alt": "",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 1800,
+        "height": 1200,
+        "originalBytes": 16523570,
+        "outputBytes": 5205285,
+        "uploadedAt": "2026-06-27T22:37:49.427Z",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "photo-1782599869945-ddjrzfz4",
+        "src": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599869945-ddjrzfz4-4acc58a3.png",
+        "thumb": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599869945-ddjrzfz4-thumb-bedd6b6a.png",
+        "title": "",
+        "caption": "新的风景",
+        "alt": "新的风景",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 1200,
+        "height": 1800,
+        "originalBytes": 16772731,
+        "outputBytes": 5195928,
+        "uploadedAt": "2026-06-27T22:37:49.866Z",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "photo-1782599870298-bn0aywgv",
+        "src": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599870298-bn0aywgv-192a86b9.png",
+        "thumb": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599870298-bn0aywgv-thumb-520d05cf.png",
+        "title": "",
+        "caption": "新的风景",
+        "alt": "新的风景",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 1800,
+        "height": 1200,
+        "originalBytes": 10869776,
+        "outputBytes": 3850074,
+        "uploadedAt": "2026-06-27T22:37:50.235Z",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "photo-1782599870713-9xizfpu7",
+        "src": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599870713-9xizfpu7-6b433722.png",
+        "thumb": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599870713-9xizfpu7-thumb-8ddce297.png",
+        "title": "",
+        "caption": "新的风景",
+        "alt": "新的风景",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 1800,
+        "height": 1200,
+        "originalBytes": 15137233,
+        "outputBytes": 4432866,
+        "uploadedAt": "2026-06-27T22:37:50.642Z",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "photo-1782599871100-ettsj3dg",
+        "src": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599871100-ettsj3dg-4d653d36.png",
+        "thumb": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599871100-ettsj3dg-thumb-296baa9b.png",
+        "title": "",
+        "caption": "新的风景",
+        "alt": "新的风景",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 1800,
+        "height": 1200,
+        "originalBytes": 13193632,
+        "outputBytes": 4297059,
+        "uploadedAt": "2026-06-27T22:37:51.034Z",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "photo-1782599871548-sftlfhu3",
+        "src": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599871548-sftlfhu3-b918ad07.png",
+        "thumb": "./uploads/20260627223833-journey-mqwxxji7-photo-1782599871548-sftlfhu3-thumb-8e738ca6.png",
+        "title": "",
+        "caption": "新的风景",
+        "alt": "新的风景",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 1800,
+        "height": 1200,
+        "originalBytes": 18044842,
+        "outputBytes": 5320737,
+        "uploadedAt": "2026-06-27T22:37:51.468Z",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      }
+    ],
+    "galleryLayout": "auto",
+    "coverMeta": {
+      "name": "DSC_7981.jpeg",
+      "originalBytes": 17786024,
+      "outputBytes": 4552248,
+      "width": 1800,
+      "height": 1200,
+      "aspectMode": "original",
+      "uploadedAt": "2026-06-27T22:37:47.998Z"
+    },
+    "cardMeta": {
+      "name": "DSC_7981.jpeg",
+      "originalBytes": 17786024,
+      "outputBytes": 4552248,
+      "width": 1800,
+      "height": 1200,
+      "aspectMode": "original",
+      "uploadedAt": "2026-06-27T22:37:47.998Z"
+    },
+    "coverCaption": "",
+    "status": "public"
   }
 ]
