@@ -60,10 +60,14 @@
   }
 
   function saveDraft(data) {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({
-      savedAt: new Date().toISOString(),
-      data
-    }));
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        savedAt: new Date().toISOString(),
+        data: window.ArchiveStore.compactForLocalStorage(data)
+      }));
+    } catch {
+      localStorage.removeItem(DRAFT_KEY);
+    }
   }
 
   function loadDraft() {

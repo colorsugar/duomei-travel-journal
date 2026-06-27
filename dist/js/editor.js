@@ -1,6 +1,29 @@
 (function () {
   const $ = (selector, root = document) => root.querySelector(selector);
   const today = () => new Date().toISOString().slice(0, 10);
+  const undoStack = [];
+
+  function remember(state) {
+    undoStack.push(JSON.stringify(state.data));
+    if (undoStack.length > 20) undoStack.shift();
+  }
+
+  function markDirty(state) {
+    state.hasUnpublishedChanges = true;
+  }
+
+  function undo(state) {
+    const snapshot = undoStack.pop();
+    if (!snapshot) {
+      window.ArchiveUI?.toast("没有可以撤销的操作");
+      return;
+    }
+    state.data = window.ArchiveStore.normalize(JSON.parse(snapshot));
+    window.ArchiveStore.save(state.data, true);
+    markDirty(state);
+    window.ArchiveRender.renderApp(state);
+    window.ArchiveUI?.toast("已撤销上一步");
+  }
 
   function slugify(value) {
     const slug = (value || "")
@@ -86,18 +109,67 @@
     };
   }
 
+  function formatBytes(value) {
+    if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} KB`;
+    return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  function beginUploadProgress(files) {
+    const panel = $("#uploadProgress");
+    const items = $("#uploadProgressItems");
+    panel.hidden = false;
+    $("#uploadProgressTitle").textContent = "正在逐张处理";
+    $("#uploadProgressCount").textContent = `0/${files.length}`;
+    $("#uploadProgressBar").style.width = "0%";
+    items.innerHTML = files.map((file, index) => `<div data-upload-index="${index}"><strong>${file.name}</strong><span>${formatBytes(file.size)} · 等待</span></div>`).join("");
+  }
+
+  function updateUploadProgress(index, total, file, status, outputBytes = 0) {
+    $("#uploadProgressCount").textContent = `${index + 1}/${total}`;
+    $("#uploadProgressBar").style.width = `${Math.round((index + 1) / total * 100)}%`;
+    const item = $(`[data-upload-index="${index}"]`);
+    if (item) {
+      item.dataset.status = status;
+      item.querySelector("span").textContent = outputBytes
+        ? `${formatBytes(file.size)} → ${formatBytes(outputBytes)} · ${status}`
+        : `${formatBytes(file.size)} · ${status}`;
+    }
+  }
+
+  function finishUploadProgress() {
+    $("#uploadProgressTitle").textContent = "图片处理完成";
+    window.setTimeout(() => { $("#uploadProgress").hidden = true; }, 2600);
+  }
+
   async function addGalleryFiles(city, files) {
     city.gallery = city.gallery || [];
     const uploadedIds = [];
-    for (const file of files) {
-      const result = await cropAndTheme(file);
-      if (!result) continue;
-      const photo = emptyPhotoSlot(city) || createPhoto();
-      photo.src = result.image;
-      photo.thumb = result.thumb;
-      uploadedIds.push(photo.id);
-      if (!city.gallery.includes(photo)) city.gallery.push(photo);
+    beginUploadProgress(files);
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index];
+      if (file.size > 20 * 1024 * 1024) {
+        window.ArchiveUI?.toast(`${file.name} 超过 20MB，建议先压缩`);
+      }
+      updateUploadProgress(index, files.length, file, "读取与裁剪");
+      try {
+        const result = await cropAndTheme(file);
+        if (!result) {
+          updateUploadProgress(index, files.length, file, "已取消");
+          continue;
+        }
+        const photo = emptyPhotoSlot(city) || createPhoto();
+        photo.src = result.image;
+        photo.thumb = result.thumb;
+        uploadedIds.push(photo.id);
+        if (!city.gallery.includes(photo)) city.gallery.push(photo);
+        updateUploadProgress(index, files.length, file, "已完成", window.ArchiveImage.lastCompression?.outputBytes || 0);
+      } catch (error) {
+        updateUploadProgress(index, files.length, file, "失败，可重新选择");
+        window.ArchiveUI?.toast(`${file.name}：${error.message || "处理失败"}`);
+      }
+      await new Promise((resolve) => requestAnimationFrame(resolve));
     }
+    finishUploadProgress();
     touch(city);
     return uploadedIds;
   }
@@ -171,6 +243,7 @@
     if (!existing) state.data.journeys.push(city);
     state.currentSlug = city.slug;
     state.data = window.ArchiveStore.normalize(state.data);
+    markDirty(state);
     window.ArchiveStore.save(state.data);
     closeDialog($("#cityDialog"));
     window.ArchiveRender.renderApp(state);
@@ -200,6 +273,7 @@
     }
 
     window.ArchiveStore.save(state.data, true);
+    markDirty(state);
   }
 
   function styleRootFor(state, editable) {
@@ -244,6 +318,7 @@
     if (key === "lineHeight") editable.style.lineHeight = value;
     if (key === "font") editable.style.fontFamily = value;
     window.ArchiveStore.save(state.data, true);
+    markDirty(state);
   }
 
   function syncToolbar(state, editable) {
@@ -268,6 +343,8 @@
     input.addEventListener("change", async () => {
       const files = filesFrom(input);
       if (!files.length) return;
+      remember(state);
+      markDirty(state);
       let uploadedIds = [];
 
       if (target.dataset.uploadCard) {
@@ -302,6 +379,7 @@
       touch(city);
       state.data = window.ArchiveStore.normalize(state.data);
       window.ArchiveStore.save(state.data);
+      window.ArchiveManager?.backup(state.data, "图片上传完成")?.catch(() => {});
       window.ArchiveRender.renderApp(state);
       focusUploadedPhoto(uploadedIds[0]);
     }, { once: true });
@@ -311,6 +389,8 @@
     const city = cityById(state.data, id);
     if (!city) return;
     if (!confirm(`确定删除「${city.title}」吗？`)) return;
+    remember(state);
+    markDirty(state);
     state.data.journeys = state.data.journeys.filter((item) => item.id !== city.id);
     if (state.currentSlug === city.slug) state.currentSlug = "";
     window.ArchiveStore.save(state.data);
@@ -322,6 +402,8 @@
     const index = state.data.journeys.findIndex((city) => city.id === id);
     const next = direction === "up" ? index - 1 : index + 1;
     if (index < 0 || next < 0 || next >= state.data.journeys.length) return;
+    remember(state);
+    markDirty(state);
     const [city] = state.data.journeys.splice(index, 1);
     state.data.journeys.splice(next, 0, city);
     window.ArchiveStore.save(state.data);
@@ -331,7 +413,27 @@
   function deletePhoto(state, cityId, photoId) {
     const city = cityById(state.data, cityId);
     if (!city) return;
+    if (!confirm("确定删除这张图片吗？此操作会保留在恢复备份中。")) return;
+    remember(state);
+    markDirty(state);
+    window.ArchiveManager?.backup(state.data, "删除图片前")?.catch(() => {});
     city.gallery = city.gallery.filter((photo) => photo.id !== photoId);
+    touch(city);
+    window.ArchiveStore.save(state.data);
+    window.ArchiveRender.renderApp(state);
+  }
+
+  function deleteCover(state, cityId) {
+    const city = cityById(state.data, cityId);
+    if (!city || !city.coverImage) return;
+    if (!confirm("确定删除封面并恢复为空白吗？")) return;
+    remember(state);
+    markDirty(state);
+    window.ArchiveManager?.backup(state.data, "删除封面前")?.catch(() => {});
+    city.coverImage = "";
+    city.coverThumb = "";
+    city.coverCaption = "";
+    city.theme = null;
     touch(city);
     window.ArchiveStore.save(state.data);
     window.ArchiveRender.renderApp(state);
@@ -343,6 +445,8 @@
     const index = city.gallery.findIndex((photo) => photo.id === photoId);
     const next = direction === "left" ? index - 1 : index + 1;
     if (index < 0 || next < 0 || next >= city.gallery.length) return;
+    remember(state);
+    markDirty(state);
     const [photo] = city.gallery.splice(index, 1);
     city.gallery.splice(next, 0, photo);
     touch(city);
@@ -355,6 +459,7 @@
     state.editMode = !state.editMode;
     $("#editToggle").setAttribute("aria-pressed", String(state.editMode));
     $("#editToggle").textContent = state.editMode ? "完成编辑" : "编辑模式";
+    if ($("#adminDashboard")) $("#adminDashboard").textContent = state.editMode ? "编辑模式" : "浏览模式";
     window.ArchiveRender.setEditable(state.editMode);
     document.body.classList.toggle("edit-on", state.editMode);
     window.ArchiveRender.renderApp(state);
@@ -391,10 +496,12 @@
       if (name === "move-city-up" && isEditing(state)) moveCity(state, action.dataset.id, "up");
       if (name === "move-city-down" && isEditing(state)) moveCity(state, action.dataset.id, "down");
       if (name === "delete-photo" && isEditing(state)) deletePhoto(state, action.dataset.city, action.dataset.photo);
+      if (name === "delete-cover" && isEditing(state)) deleteCover(state, action.dataset.city);
       if (name === "move-photo-left" && isEditing(state)) movePhoto(state, action.dataset.city, action.dataset.photo, "left");
       if (name === "move-photo-right" && isEditing(state)) movePhoto(state, action.dataset.city, action.dataset.photo, "right");
       if (name === "export" && isEditing(state)) window.ArchiveStore.exportJson(state.data);
       if (name === "import" && isEditing(state)) $("#importInput")?.click();
+      if (name === "undo" && isEditing(state)) undo(state);
       if (name === "top") window.scrollTo({ top: 0, behavior: "smooth" });
       if (name === "random") window.ArchiveApp.openRandom();
       if (name === "next") window.ArchiveApp.openNext();

@@ -123,6 +123,7 @@
           <div class="detail-meta">${city.tags.map((tag) => `<button class="tag-pill" data-filter-tag="${esc(tag)}">#${esc(tag)}</button>`).join("")}</div>
           <div class="hero-tools edit-only">
             <button class="pill" data-upload-cover="${esc(city.id)}">上传封面</button>
+            ${city.coverImage ? `<button class="pill danger" data-action="delete-cover" data-city="${esc(city.id)}">删除封面</button>` : ""}
           </div>
         </div>
       </section>

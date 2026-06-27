@@ -115,10 +115,26 @@
     setTimeout(() => { warnedQuota = false; }, 12000);
   }
 
+  function compactForLocalStorage(data) {
+    const compact = clone(normalize(data));
+    const keepPath = (value) => typeof value === "string" && !value.startsWith("data:") ? value : "";
+    compact.journeys.forEach((city) => {
+      city.coverImage = keepPath(city.coverImage);
+      city.coverThumb = keepPath(city.coverThumb);
+      city.cardImage = keepPath(city.cardImage);
+      city.cardThumb = keepPath(city.cardThumb);
+      city.gallery.forEach((photo) => {
+        photo.src = keepPath(photo.src);
+        photo.thumb = keepPath(photo.thumb);
+      });
+    });
+    return compact;
+  }
+
   function save(data, silent = false) {
     try {
       LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
-      localStorage.setItem(KEY, JSON.stringify(normalize(data)));
+      localStorage.setItem(KEY, JSON.stringify(compactForLocalStorage(data)));
       if (!silent) window.ArchiveUI?.toast("已保存");
       return true;
     } catch {
@@ -146,5 +162,5 @@
     LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
   }
 
-  window.ArchiveStore = { KEY, load, save, exportJson, importJson, normalize, clearSavedData };
+  window.ArchiveStore = { KEY, load, save, exportJson, importJson, normalize, compactForLocalStorage, clearSavedData };
 })();

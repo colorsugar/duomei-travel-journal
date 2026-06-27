@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>多美 | Travel Journal</title>
-  <link rel="stylesheet" href="./css/archive.css?v=20260627-ux-polish">
+  <link rel="stylesheet" href="./css/archive.css?v=20260627-v31">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -21,6 +21,8 @@
       <button class="pill" type="button" data-view="stats">Stats</button>
       <button class="pill edit-only admin-only" type="button" data-action="export">导出 JSON</button>
       <button class="pill edit-only admin-only" type="button" data-action="import">导入 JSON</button>
+      <button class="pill edit-only admin-only" type="button" data-action="undo">撤销</button>
+      <button class="pill admin-only admin-mode-indicator" id="adminDashboard" type="button">浏览模式</button>
       <span class="pill admin-status" id="adminStatus">后台已连接</span>
       <button class="pill admin-only" id="adminLogout" type="button">退出管理</button>
       <input id="importInput" class="sr-file" type="file" accept="application/json">
@@ -98,6 +100,11 @@
   <button id="quickAddCity" class="quick-add edit-only admin-only" type="button" data-action="add-city">＋ 添加城市</button>
   <button id="editToggle" class="edit-toggle admin-only" type="button" aria-pressed="false">编辑模式</button>
   <button id="adminPublish" class="publish-toggle edit-only admin-only" type="button">发布</button>
+  <aside id="uploadProgress" class="upload-progress" aria-live="polite" hidden>
+    <header><strong id="uploadProgressTitle">处理图片</strong><span id="uploadProgressCount">0/0</span></header>
+    <div class="progress-track"><span id="uploadProgressBar"></span></div>
+    <div id="uploadProgressItems" class="upload-progress-items"></div>
+  </aside>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <div id="textToolbar" class="text-toolbar edit-only admin-only" aria-label="文字样式">
@@ -138,6 +145,28 @@
         <button id="adminConnect" class="pill primary" type="button">连接后台</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="dashboardDialog" class="dialog dashboard-dialog">
+    <div class="dialog-card dashboard-card">
+      <header class="dialog-head">
+        <div><p class="section-kicker">Administrator</p><h2>管理中心</h2></div>
+        <button id="dashboardClose" class="dialog-close" type="button" aria-label="关闭">×</button>
+      </header>
+      <div class="dashboard-summary">
+        <section class="health-card"><span>Health Score</span><strong id="healthScore">--</strong><small id="healthLabel">正在检查</small></section>
+        <section><span>Journey</span><strong id="dashboardJourneys">0</strong></section>
+        <section><span>图片</span><strong id="dashboardPhotos">0</strong></section>
+        <section><span>草稿</span><strong id="dashboardDraft">无</strong></section>
+      </div>
+      <div class="dashboard-actions">
+        <button class="dashboard-action primary" id="dashboardContinue" type="button"><strong>继续编辑</strong><span>进入有淡蓝边框保护的编辑模式</span></button>
+        <button class="dashboard-action" data-admin-panel="media" type="button"><strong>Media Manager</strong><span>查看引用、空槽位和图片体积</span></button>
+        <button class="dashboard-action" data-admin-panel="recovery" type="button"><strong>Recovery</strong><span>恢复最近的自动备份</span></button>
+        <button class="dashboard-action" data-admin-panel="repository" type="button"><strong>Repository</strong><span>查看仓库与浏览器存储概况</span></button>
+      </div>
+      <section id="adminPanel" class="admin-panel" hidden></section>
+    </div>
   </dialog>
 
   <dialog id="cityDialog" class="dialog">
@@ -192,14 +221,15 @@
     <p id="lightboxCaption"></p>
   </div>
 
-  <script src="./js/data.js?v=20260627-ux-polish"></script>
-  <script src="./js/store.js?v=20260627-ux-polish"></script>
-  <script src="./js/image.js?v=20260627-ux-polish"></script>
-  <script src="./js/render.js?v=20260627-ux-polish"></script>
-  <script src="./js/editor.js?v=20260627-ux-polish"></script>
-  <script src="./js/interactions.js?v=20260627-ux-polish"></script>
-  <script src="./js/cms-client.js?v=20260627-ux-polish"></script>
-  <script src="./js/admin.js?v=20260627-ux-polish"></script>
-  <script src="./js/app.js?v=20260627-ux-polish"></script>
+  <script src="./js/data.js?v=20260627-v31"></script>
+  <script src="./js/store.js?v=20260627-v31"></script>
+  <script src="./js/image.js?v=20260627-v31"></script>
+  <script src="./js/render.js?v=20260627-v31"></script>
+  <script src="./js/editor.js?v=20260627-v31"></script>
+  <script src="./js/interactions.js?v=20260627-v31"></script>
+  <script src="./js/cms-client.js?v=20260627-v31"></script>
+  <script src="./js/manager.js?v=20260627-v31"></script>
+  <script src="./js/admin.js?v=20260627-v31"></script>
+  <script src="./js/app.js?v=20260627-v31"></script>
 </body>
 </html>

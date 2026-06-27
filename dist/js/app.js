@@ -75,7 +75,6 @@
   }
 
   async function loadPublishedArchive() {
-    if (window.ArchiveCMS?.loadDraft?.()) return;
     try {
       const bust = `v=${Date.now()}`;
       const [journeysRes, settingsRes] = await Promise.all([
@@ -101,6 +100,7 @@
   function init() {
     window.ArchiveImage.bindCropper();
     window.ArchiveEditor.init(state);
+    window.ArchiveManager?.bind();
     window.ArchiveFX.init(state);
     bindNavigation();
     window.ArchiveRender.renderApp(state);

@@ -1,8 +1,7 @@
 (function () {
   const $ = (selector, root = document) => root.querySelector(selector);
 
-  let logoClicks = 0;
-  let logoTimer = 0;
+  let logoPressTimer = 0;
   let publishing = false;
   let autoSaveTimer = 0;
 
@@ -36,6 +35,7 @@
     setAdminStatus(`后台已连接${health.actor ? ` · ${health.actor}` : ""}`);
     toast("管理员已登录");
     closeDialog();
+    window.ArchiveManager?.openDashboard();
     return health;
   }
 
@@ -88,6 +88,9 @@
     window.ArchiveCMS.saveDraft(window.ArchiveApp.state.data);
 
     try {
+      if (window.ArchiveManager) {
+        await window.ArchiveManager.backup(window.ArchiveApp.state.data, "发布前自动备份").catch(() => {});
+      }
       toast("正在发布到 GitHub...");
       const archive = window.ArchiveStore.normalize(window.ArchiveApp.state.data);
       const result = await window.ArchiveCMS.api("/api/publish", {
@@ -107,6 +110,7 @@
       }
 
       window.ArchiveCMS.clearDraft();
+      window.ArchiveApp.state.hasUnpublishedChanges = false;
       toast(`发布成功：${result.commit.slice(0, 7)}${result.uploads ? `，图片 ${result.uploads} 张` : ""}`);
     } catch (error) {
       toast(error.message || "发布失败，草稿已保留");
@@ -133,27 +137,46 @@
     if (!document.body.classList.contains("admin-authenticated")) return;
     if (!window.ArchiveApp?.state?.data) return;
     window.ArchiveCMS.saveDraft(window.ArchiveApp.state.data);
+    window.ArchiveManager?.backup(window.ArchiveApp.state.data, "30 秒自动保存")?.catch(() => {});
+    setAdminStatus("草稿已自动保存");
   }
 
   function bindAutoSave() {
     clearInterval(autoSaveTimer);
     autoSaveTimer = setInterval(saveDraftSilently, 30000);
     window.addEventListener("beforeunload", saveDraftSilently);
+    window.addEventListener("beforeunload", (event) => {
+      if (!window.ArchiveApp?.state?.hasUnpublishedChanges) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") saveDraftSilently();
     });
   }
 
   function bindLogoSecret() {
-    $(".brand")?.addEventListener("click", () => {
-      logoClicks += 1;
-      clearTimeout(logoTimer);
-      logoTimer = setTimeout(() => { logoClicks = 0; }, 1600);
-      if (logoClicks >= 5) {
-        logoClicks = 0;
+    const brand = $(".brand");
+    if (!brand) return;
+    const start = (event) => {
+      if (document.body.classList.contains("admin-authenticated")) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      clearTimeout(logoPressTimer);
+      logoPressTimer = window.setTimeout(() => {
+        logoPressTimer = 0;
+        if (navigator.vibrate) navigator.vibrate(20);
         openDialog();
-      }
-    });
+      }, 850);
+    };
+    const cancel = () => {
+      if (logoPressTimer) clearTimeout(logoPressTimer);
+      logoPressTimer = 0;
+    };
+    brand.addEventListener("pointerdown", start);
+    brand.addEventListener("pointerup", cancel);
+    brand.addEventListener("pointercancel", cancel);
+    brand.addEventListener("pointerleave", cancel);
+    brand.addEventListener("contextmenu", (event) => event.preventDefault());
   }
 
   function bind() {

@@ -7,22 +7,24 @@
   const zoom = () => document.getElementById("cropZoom");
   const zoomText = () => document.getElementById("cropZoomText");
 
-  function read(file) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function cropFile(file) {
     if (!file || !file.type.startsWith("image/")) return "";
-    const src = await read(file);
+    const src = URL.createObjectURL(file);
     return new Promise((resolve) => {
       resolver = resolve;
       const img = new Image();
       img.onload = () => {
-        state = { src, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight, x: 0, y: 0, scale: 1, dragging: false };
+        state = {
+          src,
+          file,
+          naturalWidth: img.naturalWidth,
+          naturalHeight: img.naturalHeight,
+          x: 0,
+          y: 0,
+          scale: 1,
+          dragging: false,
+          pointers: new Map()
+        };
         image().src = src;
         zoom().value = "1";
         zoomText().textContent = "100%";
@@ -60,6 +62,7 @@
   }
 
   function finish(value = "") {
+    if (state?.src?.startsWith("blob:")) URL.revokeObjectURL(state.src);
     if (resolver) resolver(value);
     resolver = null;
     state = null;
@@ -89,7 +92,14 @@
     ctx.fillStyle = "#f7f3eb";
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(image(), sx, sy, sw, sh, 0, 0, width, height);
-    finish(canvas.toDataURL("image/jpeg", .86));
+    const output = canvas.toDataURL("image/webp", .82);
+    const outputBytes = Math.round((output.length - output.indexOf(",") - 1) * .75);
+    window.ArchiveImage.lastCompression = {
+      name: state.file?.name || "image",
+      originalBytes: state.file?.size || 0,
+      outputBytes
+    };
+    finish(output);
   }
 
   function thumb(dataUrl) {
@@ -101,7 +111,7 @@
         canvas.height = 220;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", .72));
+        resolve(canvas.toDataURL("image/webp", .72));
       };
       img.src = dataUrl;
     });
@@ -167,25 +177,52 @@
 
   function bindCropper() {
     const s = stage();
+    const distance = () => {
+      const points = [...state.pointers.values()];
+      if (points.length < 2) return 0;
+      return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+    };
     s.addEventListener("pointerdown", (event) => {
       if (!state) return;
+      event.preventDefault();
+      state.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       state.dragging = true;
       state.startX = event.clientX; state.startY = event.clientY;
       state.baseX = state.x; state.baseY = state.y;
+      if (state.pointers.size === 2) {
+        state.pinchStart = distance();
+        state.pinchScale = state.scale;
+      }
       s.classList.add("dragging");
       s.setPointerCapture(event.pointerId);
     });
     s.addEventListener("pointermove", (event) => {
       if (!state?.dragging) return;
+      event.preventDefault();
+      state.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (state.pointers.size >= 2) {
+        const ratio = distance() / Math.max(1, state.pinchStart || distance());
+        state.scale = Math.min(3, Math.max(1, state.pinchScale * ratio));
+        zoom().value = String(state.scale);
+        update();
+        return;
+      }
       state.x = state.baseX + event.clientX - state.startX;
       state.y = state.baseY + event.clientY - state.startY;
       update();
     });
-    s.addEventListener("pointerup", (event) => {
+    const endPointer = (event) => {
       if (!state) return;
+      state.pointers.delete(event.pointerId);
       state.dragging = false;
       s.classList.remove("dragging");
       try { s.releasePointerCapture(event.pointerId); } catch {}
+    };
+    s.addEventListener("pointerup", endPointer);
+    s.addEventListener("pointercancel", endPointer);
+    s.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      fit();
     });
     s.addEventListener("wheel", (event) => {
       if (!state) return;
