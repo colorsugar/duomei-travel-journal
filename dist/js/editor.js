@@ -1,7 +1,9 @@
 (function () {
   const $ = (selector, root = document) => root.querySelector(selector);
   const today = () => new Date().toISOString().slice(0, 10);
+  const RECENT_TAGS_KEY = "duomei_recent_tags";
   const undoStack = [];
+  let uploadBatch = null;
 
   function remember(state) {
     undoStack.push(JSON.stringify(state.data));
@@ -64,12 +66,79 @@
     return $(`#${id}`)?.value.trim() || "";
   }
 
-  async function cropAndTheme(file) {
+  function tagValues() {
+    return formValue("cityTags").split(",").map((tag) => tag.trim()).filter(Boolean);
+  }
+
+  function renderTagChips(tags) {
+    const unique = [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))];
+    $("#cityTags").value = unique.join(",");
+    $("#cityTagChips").innerHTML = unique.map((tag) => {
+      const safe = tag.replace(/[<>&"]/g, "");
+      return `<span class="tag-chip">#${safe}<button type="button" data-remove-tag="${encodeURIComponent(tag)}" aria-label="删除 ${safe}">×</button></span>`;
+    }).join("");
+  }
+
+  function recentTags() {
+    try { return JSON.parse(localStorage.getItem(RECENT_TAGS_KEY) || "[]"); } catch { return []; }
+  }
+
+  function rememberTag(tag) {
+    const tags = [tag, ...recentTags().filter((item) => item !== tag)].slice(0, 8);
+    localStorage.setItem(RECENT_TAGS_KEY, JSON.stringify(tags));
+  }
+
+  function renderTagSuggestions(query = "") {
+    const root = $("#cityTagSuggestions");
+    if (!root || !window.ArchiveApp?.state?.data) return;
+    const counts = {};
+    window.ArchiveApp.state.data.journeys.forEach((city) => (city.tags || []).forEach((tag) => { counts[tag] = (counts[tag] || 0) + 1; }));
+    const current = new Set(tagValues());
+    const candidates = [...new Set([...recentTags(), ...Object.keys(counts).sort((a, b) => counts[b] - counts[a])])]
+      .filter((tag) => !current.has(tag) && (!query || tag.toLowerCase().includes(query.toLowerCase())))
+      .slice(0, 8);
+    root.innerHTML = candidates.length
+      ? `<span>${query ? "自动补全" : "最近 / 热门"}</span>${candidates.map((tag) => `<button type="button" data-suggest-tag="${encodeURIComponent(tag)}">#${tag.replace(/[<>&"]/g, "")}</button>`).join("")}`
+      : "";
+  }
+
+  function addPendingTag() {
+    const input = $("#cityTagInput");
+    const value = input.value.trim().replace(/^#/, "");
+    if (!value) return;
+    renderTagChips([...tagValues(), value]);
+    rememberTag(value);
+    renderTagSuggestions();
+    input.value = "";
+  }
+
+  async function ensureFileReady(file) {
+    if (!file) throw new Error("没有读取到图片文件");
+    const progress = $("#uploadProgress");
+    if (progress) progress.hidden = false;
+    $("#uploadProgressTitle").textContent = "正在从相册读取照片...";
+    if (!file.size) {
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      if (!file.size) throw new Error("照片尚未从 iCloud 下载完成，请稍后重试");
+    }
+    try {
+      await file.slice(0, Math.min(file.size, 64 * 1024)).arrayBuffer();
+    } catch {
+      throw new Error("无法读取照片，请确认 iCloud 下载完成后重试");
+    }
+    return file;
+  }
+
+  async function cropAndTheme(file, onStage = () => {}) {
+    await ensureFileReady(file);
+    onStage("正在读取图片");
     const image = await window.ArchiveImage.cropFile(file);
     if (!image) return null;
+    onStage("正在压缩并转换 WebP");
     const thumb = await window.ArchiveImage.thumb(image);
+    onStage("正在分析照片颜色");
     const theme = await window.ArchiveImage.extractTheme(image);
-    return { image, thumb, theme };
+    return { image, thumb, theme, meta: { ...(window.ArchiveImage.lastCompression || {}) } };
   }
 
   function emptyPhotoSlot(city) {
@@ -118,6 +187,8 @@
     const panel = $("#uploadProgress");
     const items = $("#uploadProgressItems");
     panel.hidden = false;
+    panel.classList.remove("is-complete", "is-failed");
+    uploadBatch = { startedAt: performance.now(), total: files.length, originalBytes: files.reduce((sum, file) => sum + file.size, 0) };
     $("#uploadProgressTitle").textContent = "正在逐张处理";
     $("#uploadProgressCount").textContent = `0/${files.length}`;
     $("#uploadProgressBar").style.width = "0%";
@@ -134,10 +205,19 @@
         ? `${formatBytes(file.size)} → ${formatBytes(outputBytes)} · ${status}`
         : `${formatBytes(file.size)} · ${status}`;
     }
+    if (outputBytes && uploadBatch) {
+      const elapsed = Math.max(.1, (performance.now() - uploadBatch.startedAt) / 1000);
+      const completed = index + 1;
+      const speed = uploadBatch.originalBytes / elapsed;
+      const remaining = Math.max(0, Math.round((elapsed / completed) * (total - completed)));
+      $("#uploadProgressTitle").textContent = `处理中 · ${formatBytes(speed)}/s${remaining ? ` · 约 ${remaining}s` : ""}`;
+    }
   }
 
   function finishUploadProgress() {
     $("#uploadProgressTitle").textContent = "图片处理完成";
+    $("#uploadProgress").classList.add("is-complete");
+    uploadBatch = null;
     window.setTimeout(() => { $("#uploadProgress").hidden = true; }, 2600);
   }
 
@@ -152,7 +232,7 @@
       }
       updateUploadProgress(index, files.length, file, "读取与裁剪");
       try {
-        const result = await cropAndTheme(file);
+        const result = await cropAndTheme(file, (status) => updateUploadProgress(index, files.length, file, status));
         if (!result) {
           updateUploadProgress(index, files.length, file, "已取消");
           continue;
@@ -160,6 +240,7 @@
         const photo = emptyPhotoSlot(city) || createPhoto();
         photo.src = result.image;
         photo.thumb = result.thumb;
+        Object.assign(photo, result.meta || {});
         uploadedIds.push(photo.id);
         if (!city.gallery.includes(photo)) city.gallery.push(photo);
         updateUploadProgress(index, files.length, file, "已完成", window.ArchiveImage.lastCompression?.outputBytes || 0);
@@ -169,7 +250,6 @@
       }
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
-    finishUploadProgress();
     touch(city);
     return uploadedIds;
   }
@@ -192,7 +272,9 @@
     $("#cityPlace").value = city?.place || "";
     $("#cityPublished").value = city?.published || today();
     $("#cityCategory").value = city?.category || "Travel";
-    $("#cityTags").value = city?.tags?.join(", ") || "";
+    renderTagChips(city?.tags || []);
+    $("#cityTagInput").value = "";
+    renderTagSuggestions();
     $("#cityExcerpt").value = city?.excerpt || "";
     $("#cityBody").value = city?.bodyTop || "";
     $("#cityCover").value = "";
@@ -217,28 +299,39 @@
     const city = existing || window.ArchiveData.createCity(slug, title, formValue("cityPublished"), formValue("cityPlace"), formValue("cityExcerpt"));
     city.title = title;
     city.slug = slug;
-    city.place = formValue("cityPlace") || "还没有写地点";
+    city.place = formValue("cityPlace");
     city.published = formValue("cityPublished") || today();
     city.updated = today();
-    city.category = formValue("cityCategory") || "Travel";
-    city.excerpt = formValue("cityExcerpt") || "这一页还在慢慢书写。";
-    city.bodyTop = formValue("cityBody") || city.bodyTop || "把一天里最想留下的画面写在这里。";
-    city.tags = formValue("cityTags").split(/[,，\s]+/).map((tag) => tag.trim()).filter(Boolean);
+    city.category = formValue("cityCategory");
+    city.excerpt = formValue("cityExcerpt");
+    city.bodyTop = formValue("cityBody");
+    addPendingTag();
+    city.tags = tagValues();
 
     const cover = filesFrom($("#cityCover"))[0];
     if (cover) {
-      const result = await cropAndTheme(cover);
+      beginUploadProgress([cover]);
+      const result = await cropAndTheme(cover, (status) => updateUploadProgress(0, 1, cover, status));
       if (result) {
         city.coverImage = result.image;
         city.coverThumb = result.thumb;
-        city.cardImage = city.cardImage || result.image;
-        city.cardThumb = city.cardThumb || result.thumb;
+        city.coverMeta = result.meta || {};
+        if (!city.cardImage) {
+          city.cardImage = result.image;
+          city.cardThumb = result.thumb;
+          city.cardMeta = result.meta || {};
+        }
         city.theme = result.theme;
+        updateUploadProgress(0, 1, cover, "已更新封面", window.ArchiveImage.lastCompression?.outputBytes || 0);
       }
+      finishUploadProgress();
     }
 
     const gallery = filesFrom($("#cityGallery"));
-    if (gallery.length) await addGalleryFiles(city, gallery);
+    if (gallery.length) {
+      await addGalleryFiles(city, gallery);
+      finishUploadProgress();
+    }
 
     if (!existing) state.data.journeys.push(city);
     state.currentSlug = city.slug;
@@ -278,6 +371,14 @@
 
   function styleRootFor(state, editable) {
     const path = editable.dataset.bind;
+    if (editable.dataset.homeSection) {
+      const section = state.data.site.homeSections.find((item) => item.id === editable.dataset.homeSection);
+      if (!section) return null;
+      const key = path.split(".").pop();
+      section.styles = section.styles || {};
+      section.styles[key] = section.styles[key] || {};
+      return section.styles[key];
+    }
     if (path?.startsWith("site.")) {
       const key = path.split(".").pop();
       state.data.site.styles[key] = state.data.site.styles[key] || {};
@@ -338,51 +439,80 @@
     input.type = "file";
     input.accept = "image/*";
     input.multiple = Boolean(target.dataset.addGallery);
-    input.click();
-
+    input.className = "sr-file";
+    document.body.appendChild(input);
     input.addEventListener("change", async () => {
-      const files = filesFrom(input);
-      if (!files.length) return;
-      remember(state);
-      markDirty(state);
-      let uploadedIds = [];
+      try {
+        const files = filesFrom(input);
+        if (!files.length) return;
+        remember(state);
+        markDirty(state);
+        let uploadedIds = [];
+        beginUploadProgress(files);
 
-      if (target.dataset.uploadCard) {
-        const result = await cropAndTheme(files[0]);
-        if (result) {
-          city.cardImage = result.image;
-          city.cardThumb = result.thumb;
+        if (target.dataset.uploadCard) {
+          const result = await cropAndTheme(files[0], (status) => updateUploadProgress(0, 1, files[0], status));
+          if (result) {
+            city.cardImage = result.image;
+            city.cardThumb = result.thumb;
+            city.cardMeta = result.meta || {};
+            updateUploadProgress(0, 1, files[0], "已更新页面", window.ArchiveImage.lastCompression?.outputBytes || 0);
+          }
         }
-      }
 
-      if (target.dataset.uploadCover) {
-        const result = await cropAndTheme(files[0]);
-        if (result) {
-          city.coverImage = result.image;
-          city.coverThumb = result.thumb;
-          city.theme = result.theme;
+        if (target.dataset.uploadCover) {
+          const result = await cropAndTheme(files[0], (status) => updateUploadProgress(0, 1, files[0], status));
+          if (result) {
+            city.coverImage = result.image;
+            city.coverThumb = result.thumb;
+            city.theme = result.theme;
+            city.coverMeta = result.meta || {};
+            updateUploadProgress(0, 1, files[0], "已更新封面", window.ArchiveImage.lastCompression?.outputBytes || 0);
+          }
         }
-      }
 
-      if (target.dataset.uploadGallery) {
-        const photo = city.gallery.find((item) => item.id === target.dataset.uploadGallery);
-        const result = await cropAndTheme(files[0]);
-        if (photo && result) {
-          photo.src = result.image;
-          photo.thumb = result.thumb;
-          uploadedIds.push(photo.id);
+        if (target.dataset.uploadGallery) {
+          const photo = city.gallery.find((item) => item.id === target.dataset.uploadGallery);
+          const result = await cropAndTheme(files[0], (status) => updateUploadProgress(0, 1, files[0], status));
+          if (photo && result) {
+            photo.src = result.image;
+            photo.thumb = result.thumb;
+            Object.assign(photo, result.meta || {});
+            uploadedIds.push(photo.id);
+            updateUploadProgress(0, 1, files[0], "已更新页面", window.ArchiveImage.lastCompression?.outputBytes || 0);
+          }
         }
+
+        if (target.dataset.addGallery) uploadedIds = await addGalleryFiles(city, files);
+
+        touch(city);
+        state.data = window.ArchiveStore.normalize(state.data);
+        window.ArchiveStore.save(state.data);
+        $("#uploadProgressTitle").textContent = "正在写入 IndexedDB";
+        if (window.ArchiveManager) await window.ArchiveManager.backup(state.data, "图片上传完成").catch(() => {});
+        $("#uploadProgressTitle").textContent = "正在更新页面";
+        window.ArchiveRender.renderApp(state);
+        focusUploadedPhoto(uploadedIds[0]);
+        finishUploadProgress();
+      } catch (error) {
+        $("#uploadProgressTitle").textContent = "图片处理失败";
+        $("#uploadProgress").classList.add("is-failed");
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "pill upload-retry";
+        retry.textContent = "重新选择此图片";
+        retry.addEventListener("click", () => {
+          retry.remove();
+          uploadToTarget(state, target);
+        }, { once: true });
+        $("#uploadProgressItems").appendChild(retry);
+        window.ArchiveUI?.toast(error.message || "图片处理失败，请重试");
+      } finally {
+        input.value = "";
+        input.remove();
       }
-
-      if (target.dataset.addGallery) uploadedIds = await addGalleryFiles(city, files);
-
-      touch(city);
-      state.data = window.ArchiveStore.normalize(state.data);
-      window.ArchiveStore.save(state.data);
-      window.ArchiveManager?.backup(state.data, "图片上传完成")?.catch(() => {});
-      window.ArchiveRender.renderApp(state);
-      focusUploadedPhoto(uploadedIds[0]);
     }, { once: true });
+    input.click();
   }
 
   function deleteCity(state, id) {
@@ -439,6 +569,39 @@
     window.ArchiveRender.renderApp(state);
   }
 
+  function mutateHomeSections(state, action, id) {
+    const sections = state.data.site.homeSections || (state.data.site.homeSections = []);
+    const index = sections.findIndex((section) => section.id === id);
+    if (action === "delete" && index >= 0 && !confirm("确定删除这个首页内容区块吗？")) return;
+    remember(state);
+    markDirty(state);
+    if (action === "add") {
+      sections.push({
+        id: window.ArchiveData.id("home"),
+        eyebrow: "New Section",
+        title: "新的首页标题",
+        subtitle: "",
+        body: "",
+        buttonLabel: "",
+        buttonUrl: "",
+        layout: "editorial",
+        visible: true,
+        order: sections.length,
+        styles: {}
+      });
+    }
+    if (action === "delete" && index >= 0) sections.splice(index, 1);
+    if (action === "toggle" && index >= 0) sections[index].visible = !sections[index].visible;
+    if (action === "layout" && index >= 0) sections[index].layout = sections[index].layout === "centered" ? "editorial" : "centered";
+    if ((action === "up" || action === "down") && index >= 0) {
+      const next = action === "up" ? index - 1 : index + 1;
+      if (next >= 0 && next < sections.length) [sections[index], sections[next]] = [sections[next], sections[index]];
+    }
+    sections.forEach((section, position) => { section.order = position; });
+    window.ArchiveStore.save(state.data, true);
+    window.ArchiveRender.renderApp(state);
+  }
+
   function movePhoto(state, cityId, photoId, direction) {
     const city = cityById(state.data, cityId);
     if (!city) return;
@@ -473,6 +636,7 @@
     $("#editToggle")?.addEventListener("click", () => toggleEditMode(state));
 
     document.addEventListener("click", async (event) => {
+      if (event.target.closest('[aria-disabled="true"]')) event.preventDefault();
       const upload = event.target.closest("[data-upload-card], [data-upload-cover], [data-upload-gallery], [data-add-gallery]");
       if (upload) {
         event.preventDefault();
@@ -497,6 +661,12 @@
       if (name === "move-city-down" && isEditing(state)) moveCity(state, action.dataset.id, "down");
       if (name === "delete-photo" && isEditing(state)) deletePhoto(state, action.dataset.city, action.dataset.photo);
       if (name === "delete-cover" && isEditing(state)) deleteCover(state, action.dataset.city);
+      if (name === "add-home-section" && isEditing(state)) mutateHomeSections(state, "add");
+      if (name === "delete-home" && isEditing(state)) mutateHomeSections(state, "delete", action.dataset.id);
+      if (name === "toggle-home" && isEditing(state)) mutateHomeSections(state, "toggle", action.dataset.id);
+      if (name === "layout-home" && isEditing(state)) mutateHomeSections(state, "layout", action.dataset.id);
+      if (name === "move-home-up" && isEditing(state)) mutateHomeSections(state, "up", action.dataset.id);
+      if (name === "move-home-down" && isEditing(state)) mutateHomeSections(state, "down", action.dataset.id);
       if (name === "move-photo-left" && isEditing(state)) movePhoto(state, action.dataset.city, action.dataset.photo, "left");
       if (name === "move-photo-right" && isEditing(state)) movePhoto(state, action.dataset.city, action.dataset.photo, "right");
       if (name === "export" && isEditing(state)) window.ArchiveStore.exportJson(state.data);
@@ -529,6 +699,30 @@
       state.currentSlug = "";
       window.ArchiveStore.save(state.data);
       window.ArchiveRender.renderApp(state);
+    });
+
+    $("#cityTagInput")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === "," || event.key === "，" || event.key === " ") {
+        event.preventDefault();
+        addPendingTag();
+      }
+    });
+    $("#cityTagInput")?.addEventListener("blur", addPendingTag);
+    $("#cityTagInput")?.addEventListener("input", (event) => renderTagSuggestions(event.target.value.trim()));
+    $("#cityTagChips")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove-tag]");
+      if (!button) return;
+      renderTagChips(tagValues().filter((tag) => tag !== decodeURIComponent(button.dataset.removeTag)));
+      renderTagSuggestions();
+    });
+    $("#cityTagSuggestions")?.addEventListener("mousedown", (event) => event.preventDefault());
+    $("#cityTagSuggestions")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-suggest-tag]");
+      if (!button) return;
+      const tag = decodeURIComponent(button.dataset.suggestTag);
+      renderTagChips([...tagValues(), tag]);
+      rememberTag(tag);
+      renderTagSuggestions();
     });
   }
 

@@ -29,6 +29,11 @@
       takenAt: photo.takenAt || photo.date || "",
       camera: photo.camera || "",
       notes: photo.notes || photo.remark || "",
+      width: Number(photo.width || 0),
+      height: Number(photo.height || 0),
+      originalBytes: Number(photo.originalBytes || 0),
+      outputBytes: Number(photo.outputBytes || 0),
+      uploadedAt: photo.uploadedAt || "",
       styles: {
         title: photo.styles?.title || {},
         caption: photo.styles?.caption || {},
@@ -55,7 +60,7 @@
     city.published = item.published || item.date || city.published || "";
     city.updated = item.updated || new Date().toISOString().slice(0, 10);
     city.views = Number(item.views || 0);
-    city.category = city.category || "Travel";
+    city.category = item.category !== undefined ? item.category : (city.category || "Travel");
     city.place = item.place || item.location || city.place || "";
     city.tags = asTags(item.tags || city.tags);
     city.coverImage = item.coverImage || "";
@@ -78,13 +83,41 @@
     const base = clone(window.ArchiveData.initial);
     const incoming = data || {};
     const journeys = Array.isArray(incoming.journeys) ? incoming.journeys : base.journeys;
+    const site = {
+      ...base.site,
+      ...(incoming.site || {}),
+      styles: { ...base.site.styles, ...(incoming.site?.styles || {}) }
+    };
+    site.homeSections = Array.isArray(incoming.site?.homeSections)
+      ? incoming.site.homeSections.map((section, index) => ({
+          id: section.id || window.ArchiveData.id("home"),
+          eyebrow: section.eyebrow || "",
+          title: section.title || "",
+          subtitle: section.subtitle || "",
+          body: section.body || "",
+          buttonLabel: section.buttonLabel || "",
+          buttonUrl: section.buttonUrl || "",
+          layout: section.layout || "editorial",
+          visible: section.visible !== false,
+          order: Number.isFinite(Number(section.order)) ? Number(section.order) : index,
+          styles: section.styles || {}
+        }))
+      : [{
+          id: window.ArchiveData.id("home"),
+          eyebrow: "Travel Archive",
+          title: "像翻开一本安静的旅行记录册",
+          subtitle: "从一个地方，慢慢走到下一个地方。",
+          body: "",
+          buttonLabel: "",
+          buttonUrl: "",
+          layout: "editorial",
+          visible: true,
+          order: 0,
+          styles: {}
+        }];
     return {
       version: 3,
-      site: {
-        ...base.site,
-        ...(incoming.site || {}),
-        styles: { ...base.site.styles, ...(incoming.site?.styles || {}) }
-      },
+      site,
       settings: { ...base.settings, ...(incoming.settings || {}) },
       journeys: journeys.map(normalizeCity),
       notes: Array.isArray(incoming.notes) ? incoming.notes : []

@@ -52,12 +52,39 @@
   function renderApp(state) {
     state.data = window.ArchiveStore.normalize(state.data);
     applySiteText(state);
+    renderHomeSections(state);
     renderJourney(state);
     if (state.currentSlug) renderDetail(state, state.currentSlug, false);
     renderTags(state);
     renderStats(state);
     setEditable(state.editMode);
     requestAnimationFrame(() => window.ArchiveFX?.observe());
+  }
+
+  function renderHomeSections(state) {
+    const root = $("#homeSections");
+    if (!root) return;
+    const editing = Boolean(state.editMode && document.body.classList.contains("admin-authenticated"));
+    const sections = [...(state.data.site.homeSections || [])].sort((a, b) => a.order - b.order);
+    root.innerHTML = sections.map((section) => {
+      const index = state.data.site.homeSections.findIndex((item) => item.id === section.id);
+      if (!section.visible && !editing) return "";
+      const extra = `data-home-section="${esc(section.id)}"`;
+      return `<article class="home-section ${section.layout} ${section.visible ? "" : "is-hidden"} reveal">
+        <div class="home-section-tools edit-only">
+          <button class="icon-btn" data-action="move-home-up" data-id="${esc(section.id)}">↑</button>
+          <button class="icon-btn" data-action="move-home-down" data-id="${esc(section.id)}">↓</button>
+          <button class="icon-btn" data-action="layout-home" data-id="${esc(section.id)}">${section.layout === "centered" ? "杂志布局" : "居中布局"}</button>
+          <button class="icon-btn" data-action="toggle-home" data-id="${esc(section.id)}">${section.visible ? "隐藏" : "显示"}</button>
+          <button class="icon-btn" data-action="delete-home" data-id="${esc(section.id)}">删除</button>
+        </div>
+        <p class="section-kicker">${editable(`site.homeSections.${index}.eyebrow`, section.eyebrow, section.styles?.eyebrow, extra)}</p>
+        <h2>${editable(`site.homeSections.${index}.title`, section.title, section.styles?.title, extra)}</h2>
+        <h3>${editable(`site.homeSections.${index}.subtitle`, section.subtitle, section.styles?.subtitle, extra)}</h3>
+        <div class="home-section-body">${editable(`site.homeSections.${index}.body`, section.body, section.styles?.body, extra)}</div>
+        ${(section.buttonLabel || editing) ? `<a class="home-section-button" href="${editing ? "#" : esc(section.buttonUrl || "#")}" ${editing ? 'aria-disabled="true"' : ""}>${editable(`site.homeSections.${index}.buttonLabel`, section.buttonLabel, section.styles?.buttonLabel, extra)}</a>` : ""}
+      </article>`;
+    }).join("") + `<button class="add-home-section edit-only" data-action="add-home-section">＋ 添加首页内容区块</button>`;
   }
 
   function renderJourney(state, list = state.data.journeys) {
@@ -244,5 +271,5 @@
     }
   }
 
-  window.ArchiveRender = { renderApp, renderJourney, renderDetail, renderTags, renderStats, setEditable, imageLoaded, editable };
+  window.ArchiveRender = { renderApp, renderHomeSections, renderJourney, renderDetail, renderTags, renderStats, setEditable, imageLoaded, editable };
 })();

@@ -51,14 +51,14 @@
     document.addEventListener("pointermove", (event) => {
       tx = event.clientX;
       ty = event.clientY;
-      if (!document.body.classList.contains("edit-on")) cursor.style.opacity = "1";
+      if (!document.body.classList.contains("admin-authenticated")) cursor.style.opacity = "1";
     }, { passive: true });
 
     function frame(time) {
-      if (document.body.classList.contains("edit-on")) {
+      if (document.body.classList.contains("admin-authenticated")) {
         visible += (0 - visible) * 0.18;
         cursor.style.opacity = String(visible);
-        requestAnimationFrame(frame);
+        window.setTimeout(() => requestAnimationFrame(frame), 180);
         return;
       }
       x += (tx - x) * 0.42;

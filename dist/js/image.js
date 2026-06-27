@@ -32,6 +32,12 @@
         else dialog().setAttribute("open", "open");
         requestAnimationFrame(fit);
       };
+      img.onerror = () => {
+        URL.revokeObjectURL(src);
+        resolver = null;
+        window.ArchiveUI?.toast("无法解码这张照片。HEIC / Live Photo 请先在相册中导出为普通照片后重试");
+        resolve("");
+      };
       img.src = src;
     });
   }
@@ -97,7 +103,10 @@
     window.ArchiveImage.lastCompression = {
       name: state.file?.name || "image",
       originalBytes: state.file?.size || 0,
-      outputBytes
+      outputBytes,
+      width,
+      height,
+      uploadedAt: new Date().toISOString()
     };
     finish(output);
   }

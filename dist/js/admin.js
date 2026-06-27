@@ -73,6 +73,45 @@
     }
   }
 
+  function archiveFingerprint(archive) {
+    return JSON.stringify({
+      site: {
+        title: archive?.site?.title,
+        subtitle: archive?.site?.subtitle,
+        poem: archive?.site?.poem,
+        homeSections: archive?.site?.homeSections
+      },
+      journeys: (archive?.journeys || []).map((city) => ({
+        slug: city.slug,
+        title: city.title,
+        updated: city.updated,
+        coverImage: city.coverImage,
+        gallery: (city.gallery || []).map((photo) => photo.src)
+      }))
+    });
+  }
+
+  async function waitForPages(expectedArchive) {
+    const expected = archiveFingerprint(expectedArchive);
+    const deadline = Date.now() + 90000;
+    while (Date.now() < deadline) {
+      try {
+        const bust = Date.now();
+        const [journeysResponse, settingsResponse] = await Promise.all([
+          fetch(`./content/journeys.json?deploy=${bust}`, { cache: "no-store" }),
+          fetch(`./content/settings.json?deploy=${bust}`, { cache: "no-store" })
+        ]);
+        if (journeysResponse.ok && settingsResponse.ok) {
+          const journeys = await journeysResponse.json();
+          const settings = await settingsResponse.json();
+          if (archiveFingerprint({ journeys, site: settings.site }) === expected) return true;
+        }
+      } catch {}
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+    return false;
+  }
+
   async function publish() {
     if (publishing) return;
     if (!document.body.classList.contains("admin-authenticated")) {
@@ -86,13 +125,23 @@
     const button = $("#adminPublish");
     setPublishing(button, true);
     window.ArchiveCMS.saveDraft(window.ArchiveApp.state.data);
+    const publishStages = [
+      "整理待发布图片",
+      "更新 Journey JSON",
+      "上传到 GitHub 并创建 Commit",
+      "等待 GitHub Pages",
+      "发布完成"
+    ];
 
     try {
+      window.ArchiveManager?.operationProgress(publishStages, 0, "准备发布");
       if (window.ArchiveManager) {
         await window.ArchiveManager.backup(window.ArchiveApp.state.data, "发布前自动备份").catch(() => {});
       }
+      window.ArchiveManager?.operationProgress(publishStages, 1, "正在更新 JSON");
       toast("正在发布到 GitHub...");
       const archive = window.ArchiveStore.normalize(window.ArchiveApp.state.data);
+      window.ArchiveManager?.operationProgress(publishStages, 2, "GitHub 正在处理");
       const result = await window.ArchiveCMS.api("/api/publish", {
         method: "POST",
         timeoutMs: 180000,
@@ -109,10 +158,24 @@
         window.ArchiveRender.renderApp(window.ArchiveApp.state);
       }
 
+      window.ArchiveManager?.operationProgress(publishStages, 3, "Commit 已创建，等待 Pages");
+      const pagesReady = await waitForPages(result.archive || archive);
       window.ArchiveCMS.clearDraft();
       window.ArchiveApp.state.hasUnpublishedChanges = false;
-      toast(`发布成功：${result.commit.slice(0, 7)}${result.uploads ? `，图片 ${result.uploads} 张` : ""}`);
+      localStorage.setItem("duomei_last_publish", JSON.stringify({
+        savedAt: new Date().toISOString(),
+        commit: result.commit
+      }));
+      if (pagesReady) {
+        window.ArchiveManager?.operationProgress(publishStages, 4, "网站已经更新");
+        window.ArchiveManager?.completeOperation("发布完成");
+        toast(`发布成功：${result.commit.slice(0, 7)}${result.uploads ? `，图片 ${result.uploads} 张` : ""}`);
+      } else {
+        window.ArchiveManager?.completeOperation("Commit 成功，Pages 仍在部署");
+        toast(`Commit ${result.commit.slice(0, 7)} 已完成，GitHub Pages 仍在部署`);
+      }
     } catch (error) {
+      window.ArchiveManager?.failOperation(error.message);
       toast(error.message || "发布失败，草稿已保留");
       throw error;
     } finally {
