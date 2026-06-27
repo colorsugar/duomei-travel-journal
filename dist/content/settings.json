@@ -3,7 +3,35 @@
     "title": "多美",
     "subtitle": "Travel Journal",
     "poem": "记录一路看到的风景，\n也记录一路走过的生活。",
-    "styles": {}
+    "styles": {},
+    "homeSections": [
+      {
+        "id": "home-1782558585818-74jmo1td",
+        "eyebrow": "Travel Archive&nbsp;",
+        "title": "像翻开一本安静的旅行记录册&nbsp;",
+        "subtitle": "从一个地方，慢慢走到下一个地方。",
+        "body": "试试",
+        "buttonLabel": "111",
+        "buttonUrl": "",
+        "layout": "centered",
+        "visible": true,
+        "order": 0,
+        "styles": {}
+      },
+      {
+        "id": "home-1782559698563-itqpj2zl",
+        "eyebrow": "New Section",
+        "title": "新的首页标题",
+        "subtitle": "",
+        "body": "",
+        "buttonLabel": "",
+        "buttonUrl": "",
+        "layout": "editorial",
+        "visible": false,
+        "order": 1,
+        "styles": {}
+      }
+    ]
   },
   "settings": {
     "analytics": {
