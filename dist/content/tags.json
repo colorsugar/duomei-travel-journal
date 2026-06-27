@@ -1,9 +1,5 @@
 [
   {
-    "name": "Nikon",
-    "count": 1
-  },
-  {
     "name": "山水",
     "count": 1
   },
@@ -16,15 +12,7 @@
     "count": 1
   },
   {
-    "name": "海边",
-    "count": 1
-  },
-  {
     "name": "烧烤",
-    "count": 1
-  },
-  {
-    "name": "船",
     "count": 1
   }
 ]
