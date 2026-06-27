@@ -35,6 +35,9 @@
     const title = $('[data-bind="site.title"]');
     const subtitle = $('[data-bind="site.subtitle"]');
     const poem = $('[data-bind="site.poem"]');
+    const journeyEyebrow = $('[data-bind="site.journeyEyebrow"]');
+    const journeyTitle = $('[data-bind="site.journeyTitle"]');
+    const journeyDescription = $('[data-bind="site.journeyDescription"]');
     if (title) {
       title.innerHTML = lines(state.data.site.title);
       title.setAttribute("style", style(state.data.site.styles?.title));
@@ -47,10 +50,54 @@
       poem.innerHTML = lines(state.data.site.poem);
       poem.setAttribute("style", style(state.data.site.styles?.poem));
     }
+    if (journeyEyebrow) journeyEyebrow.innerHTML = lines(state.data.site.journeyEyebrow);
+    if (journeyTitle) {
+      journeyTitle.innerHTML = lines(state.data.site.journeyTitle);
+      journeyTitle.setAttribute("style", style(state.data.site.styles?.journeyTitle));
+    }
+    if (journeyDescription) {
+      journeyDescription.innerHTML = lines(state.data.site.journeyDescription);
+      journeyDescription.setAttribute("style", style(state.data.site.styles?.journeyDescription));
+    }
+    applyHero(state);
+  }
+
+  function applyHero(state) {
+    const hero = $(".hero");
+    const featured = $("#heroFeatured");
+    if (!hero) return;
+    const config = state.data.site.hero || {};
+    const asset = state.data.journeys.find((city) => city.id === config.backgroundAssetId);
+    const image = asset?.coverImage || config.backgroundImage || "";
+    hero.dataset.heroMode = config.mode || "art";
+    hero.dataset.heroAlign = config.align || "left";
+    hero.style.setProperty("--hero-height", `${Number(config.height || 88)}vh`);
+    hero.style.setProperty("--hero-color", config.color || "#f7f3eb");
+    hero.style.setProperty("--hero-gradient", config.gradient || "none");
+    hero.style.setProperty("--hero-image", image ? `url("${String(image).replace(/"/g, "%22")}")` : "none");
+    hero.style.setProperty("--hero-overlay", Number(config.overlay ?? .12));
+    hero.style.setProperty("--hero-blur", `${Number(config.blur || 0)}px`);
+    hero.style.setProperty("--hero-glow", Number(config.glow ?? .22));
+    hero.classList.toggle("hero-noise", config.noise !== false);
+    hero.classList.toggle("hero-grain", config.grain !== false);
+    if (!featured) return;
+    const publicJourneys = state.data.journeys.filter((city) => city.status !== "asset");
+    let selected = null;
+    if (config.featuredMode === "manual") selected = publicJourneys.find((city) => city.id === config.featuredJourney || city.slug === config.featuredJourney);
+    if (config.featuredMode === "random" && publicJourneys.length) selected = publicJourneys[Math.floor(Math.random() * publicJourneys.length)];
+    if (["recent", "today", "week"].includes(config.featuredMode)) selected = [...publicJourneys].sort((a, b) => String(b.published).localeCompare(String(a.published)))[0];
+    if (config.featuredMode === "quote" && config.quote) {
+      featured.innerHTML = `<blockquote>${lines(config.quote)}${config.quoteAuthor ? `<cite>— ${esc(config.quoteAuthor)}</cite>` : ""}</blockquote>`;
+    } else if (selected) {
+      featured.innerHTML = `<button type="button" data-open-city="${esc(selected.slug)}"><span>Featured Journey</span><strong>${esc(selected.title)}</strong><small>${esc(selected.place || selected.published || "")}</small></button>`;
+    } else {
+      featured.innerHTML = "";
+    }
   }
 
   function renderApp(state) {
     state.data = window.ArchiveStore.normalize(state.data);
+    applySettings(state.data.settings);
     applySiteText(state);
     renderHomeSections(state);
     renderJourney(state);
@@ -59,6 +106,13 @@
     renderStats(state);
     setEditable(state.editMode);
     requestAnimationFrame(() => window.ArchiveFX?.observe());
+  }
+
+  function applySettings(settings = {}) {
+    document.body.dataset.theme = settings.theme || "auto";
+    document.body.dataset.motion = settings.animation || "smooth";
+    document.body.dataset.cursorMode = settings.cursor || "artistic";
+    document.documentElement.lang = settings.language || "zh-CN";
   }
 
   function renderHomeSections(state) {
@@ -90,7 +144,8 @@
   function renderJourney(state, list = state.data.journeys) {
     const grid = $("#journeyGrid");
     if (!grid) return;
-    grid.innerHTML = list.map((city, index) => `
+    const visible = list.filter((city) => city.status !== "asset");
+    grid.innerHTML = visible.map((city, index) => `
       <article class="journey-card card reveal" data-open-city="${esc(city.slug)}">
         <div class="card-tools edit-only">
           <button class="icon-btn" data-upload-card="${esc(city.id)}">换图</button>
@@ -112,16 +167,17 @@
   }
 
   function renderDetail(state, slug, countView = true) {
-    const index = state.data.journeys.findIndex((city) => city.slug === slug || city.id === slug);
-    const city = state.data.journeys[index] || state.data.journeys[0];
+    const journeys = state.data.journeys.filter((entry) => entry.status !== "asset");
+    const index = Math.max(0, journeys.findIndex((city) => city.slug === slug || city.id === slug));
+    const city = journeys[index] || journeys[0];
     if (!city) return;
 
     state.currentSlug = city.slug;
     if (countView) city.views = Number(city.views || 0) + 1;
     window.ArchiveImage.applyTheme(city.theme);
 
-    const prev = state.data.journeys[(index - 1 + state.data.journeys.length) % state.data.journeys.length];
-    const next = state.data.journeys[(index + 1) % state.data.journeys.length];
+    const prev = journeys[(index - 1 + journeys.length) % journeys.length];
+    const next = journeys[(index + 1) % journeys.length];
     const editing = Boolean(state.editMode && document.body.classList.contains("admin-authenticated"));
     const visibleGallery = editing
       ? city.gallery
@@ -159,7 +215,7 @@
         <div class="prose reveal">${editable("city.bodyTop", city.bodyTop, city.styles?.bodyTop, `data-city="${esc(city.id)}"`)}</div>
       </section>
       <section class="gallery-wrap">
-        <div class="gallery">
+        <div class="gallery layout-${esc(city.galleryLayout || "auto")}">
           ${visibleGallery.map((photo, photoIndex) => galleryItem(city, photo, photoIndex)).join("")}
           <button class="add-photo reveal edit-only" data-add-gallery="${esc(city.id)}">＋ 添加图片</button>
         </div>
@@ -197,12 +253,19 @@
 
   function galleryItem(city, photo, index) {
     const attr = `data-city="${esc(city.id)}" data-photo="${esc(photo.id)}"`;
-    return `<div class="gallery-item reveal">
+    const ratioMap = { "1:1": "1/1", "4:3": "4/3", "3:2": "3/2", "16:9": "16/9", "9:16": "9/16", "21:9": "21/9" };
+    const naturalRatio = photo.width && photo.height ? `${photo.width}/${photo.height}` : "4/3";
+    const ratio = ratioMap[photo.aspectMode] || naturalRatio;
+    const orientation = photo.width > photo.height * 1.2 ? "landscape" : photo.height > photo.width * 1.2 ? "portrait" : "square";
+    return `<div class="gallery-item ${orientation} reveal" style="--photo-ratio:${ratio}">
       <div class="image-tools edit-only">
         <button class="icon-btn" data-upload-gallery="${esc(photo.id)}" data-city="${esc(city.id)}">上传</button>
         <button class="icon-btn" data-action="delete-photo" data-city="${esc(city.id)}" data-photo="${esc(photo.id)}">删除</button>
         <button class="icon-btn" data-action="move-photo-left" data-city="${esc(city.id)}" data-photo="${esc(photo.id)}">←</button>
         <button class="icon-btn" data-action="move-photo-right" data-city="${esc(city.id)}" data-photo="${esc(photo.id)}">→</button>
+        <select class="photo-ratio-select" data-photo-ratio="${esc(photo.id)}" data-city="${esc(city.id)}" aria-label="图片比例">
+          ${["original","1:1","4:3","3:2","16:9","9:16","21:9","free"].map((value) => `<option value="${value}" ${photo.aspectMode === value ? "selected" : ""}>${value === "original" ? "Original" : value === "free" ? "Free Crop" : value}</option>`).join("")}
+        </select>
       </div>
       ${imageBlock({
         image: photo.src || photo.image,
@@ -222,7 +285,7 @@
 
   function renderTags(state) {
     const counts = {};
-    state.data.journeys.forEach((city) => (city.tags || []).forEach((tag) => { counts[tag] = (counts[tag] || 0) + 1; }));
+    state.data.journeys.filter((city) => city.status !== "asset").forEach((city) => (city.tags || []).forEach((tag) => { counts[tag] = (counts[tag] || 0) + 1; }));
     const tags = Object.entries(counts);
     const cloud = $("#tagCloud");
     if (!cloud) return;
@@ -233,11 +296,12 @@
   }
 
   function renderStats(state) {
-    const cities = state.data.journeys.length;
-    const photos = state.data.journeys.reduce((sum, city) => sum + city.gallery.filter((photo) => photo.src || photo.image || photo.thumb).length, 0);
-    const tags = new Set(state.data.journeys.flatMap((city) => city.tags || [])).size;
-    const views = state.data.journeys.reduce((sum, city) => sum + Number(city.views || 0), 0);
-    const top = [...state.data.journeys].sort((a, b) => Number(b.views || 0) - Number(a.views || 0))[0];
+    const publicJourneys = state.data.journeys.filter((city) => city.status !== "asset");
+    const cities = publicJourneys.length;
+    const photos = publicJourneys.reduce((sum, city) => sum + city.gallery.filter((photo) => photo.src || photo.image || photo.thumb).length, 0);
+    const tags = new Set(publicJourneys.flatMap((city) => city.tags || [])).size;
+    const views = publicJourneys.reduce((sum, city) => sum + Number(city.views || 0), 0);
+    const top = [...publicJourneys].sort((a, b) => Number(b.views || 0) - Number(a.views || 0))[0];
     const stats = $("#statsGrid");
     if (!stats) return;
     stats.innerHTML = [

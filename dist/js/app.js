@@ -52,15 +52,17 @@
   }
 
   function openRandom() {
-    if (!state.data.journeys.length) return;
-    const city = state.data.journeys[Math.floor(Math.random() * state.data.journeys.length)];
+    const journeys = state.data.journeys.filter((city) => city.status !== "asset");
+    if (!journeys.length) return;
+    const city = journeys[Math.floor(Math.random() * journeys.length)];
     openCity(city.slug);
   }
 
   function openNext() {
-    if (!state.data.journeys.length) return;
-    const index = Math.max(0, state.data.journeys.findIndex((city) => city.slug === state.currentSlug));
-    const next = state.data.journeys[(index + 1) % state.data.journeys.length];
+    const journeys = state.data.journeys.filter((city) => city.status !== "asset");
+    if (!journeys.length) return;
+    const index = Math.max(0, journeys.findIndex((city) => city.slug === state.currentSlug));
+    const next = journeys[(index + 1) % journeys.length];
     openCity(next.slug);
   }
 

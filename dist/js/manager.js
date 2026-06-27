@@ -2,6 +2,8 @@
   const DB_NAME = "duomei_travel_archive";
   const DB_VERSION = 1;
   const BACKUPS = "backups";
+  let recoveryTimer = 0;
+  let pendingRecovery = null;
   const ICONS = {
     house: '<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
     compass: '<circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5z"/>',
@@ -53,7 +55,17 @@
   }
 
   async function backup(data, reason = "自动保存") {
+    const raw = JSON.stringify(data);
+    let hash = 2166136261;
+    for (let index = 0; index < raw.length; index += Math.max(1, Math.floor(raw.length / 24000))) {
+      hash ^= raw.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    const signature = `${raw.length}-${hash >>> 0}`;
+    const previous = (await backups())[0];
+    if (previous?.signature === signature) return previous.id;
     const record = { savedAt: new Date().toISOString(), reason, data };
+    record.signature = signature;
     await transaction("readwrite", (store, resolve, reject) => {
       const request = store.add(record);
       request.onsuccess = () => resolve(request.result);
@@ -61,6 +73,21 @@
     });
     const all = await backups();
     for (const item of all.slice(10)) await removeBackup(item.id);
+  }
+
+  function scheduleRecovery(data, reason = "内容修改") {
+    pendingRecovery = { data, reason };
+    clearTimeout(recoveryTimer);
+    recoveryTimer = window.setTimeout(async () => {
+      const pending = pendingRecovery;
+      pendingRecovery = null;
+      if (pending) await backup(pending.data, pending.reason).catch(() => {});
+    }, 45000);
+  }
+
+  function cancelScheduledRecovery() {
+    clearTimeout(recoveryTimer);
+    pendingRecovery = null;
   }
 
   async function backups() {
@@ -83,8 +110,8 @@
     return data.journeys.flatMap((city) => {
       const cityPhotos = [];
       if (city.coverImage) cityPhotos.push({
-        type: city.cardImage === city.coverImage ? "Cover · Card" : "Cover",
-        city: city.title,
+        type: city.status === "asset" ? "Home Hero" : city.cardImage === city.coverImage ? "Cover · Card" : "Cover",
+        city: city.status === "asset" ? "Home" : city.title,
         cityId: city.id,
         slug: city.slug,
         src: city.coverImage,
@@ -211,7 +238,8 @@
     const repositoryLimit = 1024 * 1024 * 1024;
     const repositoryPercent = Math.min(100, repositoryBytes / repositoryLimit * 100);
     const averageUpload = Math.max(info.average, 550 * 1024);
-    animateNumber(document.getElementById("dashboardJourneys"), data.journeys.length);
+    const publicJourneys = data.journeys.filter((city) => city.status !== "asset");
+    animateNumber(document.getElementById("dashboardJourneys"), publicJourneys.length);
     animateNumber(document.getElementById("dashboardPhotos"), info.media.length);
     animateNumber(document.getElementById("dashboardPending"), info.pending);
     document.getElementById("dashboardAverage").textContent = `平均 ${sizeLabel(info.average)}`;
@@ -223,7 +251,11 @@
     const smallest = info.sizes.length ? Math.min(...info.sizes) : 0;
     document.getElementById("dashboardRange").textContent = `${sizeLabel(largest)} / ${sizeLabel(smallest)}`;
     document.getElementById("dashboardPublish").textContent = lastPublish ? relativeTime(lastPublish.savedAt) : "暂无";
-    document.getElementById("dashboardCommit").textContent = lastPublish?.commit ? `Commit ${lastPublish.commit.slice(0, 7)}` : "等待记录";
+    document.getElementById("dashboardCommit").textContent = lastPublish?.status === "waiting-pages"
+      ? "Waiting for Pages"
+      : lastPublish?.commit
+        ? `Published · ${lastPublish.commit.slice(0, 7)}`
+        : "等待记录";
     document.getElementById("repositoryUsage").textContent = `${sizeLabel(repositoryBytes)} / 1 GB`;
     document.getElementById("repositoryPercent").textContent = `${repositoryPercent.toFixed(1)}%`;
     document.getElementById("repositoryGauge").style.width = `${Math.max(1, repositoryPercent)}%`;
@@ -236,11 +268,30 @@
       : info.emptySlots
         ? `${info.emptySlots} 个空图片槽位`
         : "档案状态良好";
+    document.getElementById("studioPublishTitle").textContent = lastPublish?.status === "waiting-pages"
+      ? "Commit 已同步，正在等待 GitHub Pages"
+      : info.pending
+        ? `${info.pending} 张图片等待发布`
+        : "作品已发布并同步";
+    document.getElementById("studioPublishText").textContent = lastPublish?.status === "waiting-pages"
+      ? "图片与 JSON 已进入 GitHub，线上页面仍在部署。"
+      : info.pending
+        ? "进入编辑模式完成发布后，线上作品集才会更新。"
+        : "本地档案、GitHub 与当前发布状态一致。";
+    const pendingJourney = publicJourneys.find((city) => [city.coverImage, ...(city.gallery || []).map((photo) => photo.src)].some((src) => String(src || "").startsWith("data:")));
+    const assistant = [
+      info.pending ? `今天还有 ${info.pending} 张图片等待发布。` : "当前没有等待发布的图片。",
+      repositoryPercent < 80 ? `Repository 使用率 ${repositoryPercent.toFixed(1)}%，容量正常。` : "Repository 容量偏高，建议整理旧图片。",
+      info.average > 3 * 1024 * 1024 ? `图片平均 ${sizeLabel(info.average)}，建议使用 82% WebP。` : `图片平均 ${sizeLabel(info.average)}，压缩状态良好。`,
+      pendingJourney ? `建议先完成「${pendingJourney.title}」Journey。` : `发布后 Health 可保持在 ${info.score} 分。`
+    ];
+    document.getElementById("studioAssistantTitle").textContent = pendingJourney ? `先完成「${pendingJourney.title}」吧。` : "你的作品档案状态良好。";
+    document.getElementById("studioAssistantList").innerHTML = assistant.map((text, index) => `<p><span class="health-state ${index === 0 && info.pending ? "warning" : "good"}"></span>${text}</p>`).join("");
     const [greeting, line] = welcomeCopy();
     document.getElementById("studioGreeting").textContent = greeting;
     document.getElementById("studioWelcomeLine").textContent = line;
     animateNumber(document.getElementById("daysSincePublish"), Math.max(0, Math.floor((Date.now() - firstPublishDate(data.journeys)) / 86400000)));
-    animateNumber(document.getElementById("welcomeJourneys"), data.journeys.length);
+    animateNumber(document.getElementById("welcomeJourneys"), publicJourneys.length);
     animateNumber(document.getElementById("welcomePhotos"), info.media.length);
   }
 
@@ -248,27 +299,51 @@
     const panel = document.getElementById("adminPanel");
     const data = window.ArchiveApp.state.data;
     const info = metrics(data);
+    let publishState = null;
+    try { publishState = JSON.parse(localStorage.getItem("duomei_last_publish") || "null"); } catch {}
     info.sizes = await Promise.all(info.media.map(mediaByteSize));
     info.average = info.sizes.length ? Math.round(info.sizes.reduce((a, b) => a + b, 0) / info.sizes.length) : 0;
     panel.hidden = false;
+    if (type === "journey") {
+      const journeys = data.journeys.filter((city) => city.status !== "asset");
+      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Archive</span><h2>Journey</h2><p>在 Studio 内选择、预览和编辑旅行档案。</p></div><button class="pill edit-only" data-action="add-city">添加 Journey</button></header>
+        <div class="studio-journey-list">${journeys.map((city, index) => `<article>
+          <span class="journey-index">${String(index + 1).padStart(2, "0")}</span>
+          <div class="journey-preview">${city.cardImage || city.coverImage ? `<img src="${city.cardThumb || city.coverThumb || city.cardImage || city.coverImage}" alt="">` : ""}</div>
+          <div><strong>${city.title}</strong><span>${city.place || "未填写地点"} · ${city.published || "未填写日期"}</span><small>${(city.gallery || []).filter((photo) => photo.src).length} Photos · ${(city.tags || []).length} Tags</small></div>
+          <span class="visibility-badge ${city.status === "public" ? "visible" : "hidden"}">${city.status === "public" ? "Public" : city.status}</span>
+          <div class="journey-row-actions"><button type="button" data-journey-view="${city.slug}">预览</button><button class="edit-only" type="button" data-action="edit-city" data-id="${city.id}">编辑</button></div>
+        </article>`).join("") || "<p>还没有 Journey。</p>"}</div>`;
+    }
     if (type === "media") {
       panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Library</span><h2>Media</h2><p>${info.media.length} 张已引用图片，${info.pending} 张等待发布，${info.emptySlots} 个空槽位。</p></div>
         <label class="studio-search"><span>搜索图片</span><input id="mediaSearch" type="search" placeholder="Journey / Cover / Gallery"></label></header>
-        <div class="media-manager-grid">${info.media.map((item, mediaIndex) => `<article>
+        <div class="media-batch edit-only"><span>批量操作</span><button type="button" data-media-download-selected>下载</button><button type="button" data-media-publish-selected>发布</button><button class="danger" type="button" data-media-delete-selected>删除</button></div>
+        <div class="media-manager-grid">${info.media.map((item, mediaIndex) => {
+          const status = item.src.startsWith("data:") ? "pending" : publishState?.status === "waiting-pages" ? "waiting" : "published";
+          const statusLabel = status === "pending" ? "未发布" : status === "waiting" ? "Waiting for Pages" : "已发布";
+          const compression = item.originalBytes && item.outputBytes ? Math.max(0, Math.round((1 - item.outputBytes / item.originalBytes) * 100)) : null;
+          return `<article>
+          <label class="media-select edit-only"><input type="checkbox" data-media-select data-city="${item.cityId}" data-photo="${item.id || ""}" data-kind="${item.type}"><span></span></label>
           <img src="${item.src}" alt="">
-          <div class="media-card-head"><strong>${item.city}</strong><span class="sync-badge ${item.src.startsWith("data:") ? "pending" : "synced"}">${item.src.startsWith("data:") ? "未发布" : "已同步"}</span></div>
+          <div class="media-card-head"><strong>${item.city}</strong><span class="sync-badge ${status}">${statusLabel}</span></div>
           <span>${item.type}</span>
           <dl class="media-facts">
             <div><dt>大小</dt><dd>${sizeLabel(item.outputBytes || info.sizes[mediaIndex] || 0)}</dd></div>
             <div><dt>尺寸</dt><dd>${item.width && item.height ? `${item.width} × ${item.height}` : "暂无"}</dd></div>
             <div><dt>上传</dt><dd>${item.uploadedAt ? relativeTime(item.uploadedAt) : "历史图片"}</dd></div>
+            <div><dt>发布</dt><dd>${status === "published" ? relativeTime(publishState?.savedAt) : statusLabel}</dd></div>
             <div><dt>引用</dt><dd>${item.references || 1} 处</dd></div>
+            <div><dt>比例</dt><dd>${item.aspectMode || (item.width && item.height ? "Original" : "未知")}</dd></div>
+            <div><dt>压缩</dt><dd>${compression === null ? "暂无" : `${compression}%`}</dd></div>
+            <div><dt>EXIF</dt><dd>${item.camera || "暂无"}</dd></div>
           </dl>
           <div class="media-card-actions">
             <button type="button" data-media-reference="${item.slug}">查看引用</button>
             ${item.id ? `<button class="edit-only" type="button" data-upload-gallery="${item.id}" data-city="${item.cityId}">替换</button><button class="edit-only danger" type="button" data-action="delete-photo" data-city="${item.cityId}" data-photo="${item.id}">删除</button>` : item.type.startsWith("Cover") ? `<button class="edit-only" type="button" data-upload-cover="${item.cityId}">替换</button><button class="edit-only danger" type="button" data-action="delete-cover" data-city="${item.cityId}">删除</button>` : ""}
           </div>
-        </article>`).join("") || "<p>还没有图片。</p>"}</div>`;
+        </article>`;
+        }).join("") || "<p>还没有图片。</p>"}</div>`;
     }
     if (type === "repository") {
       const largest = info.sizes.length ? Math.max(...info.sizes) : 0;
@@ -305,6 +380,26 @@
     if (type === "home") {
       const sections = [...(data.site.homeSections || [])].sort((a, b) => a.order - b.order);
       panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Front Page</span><h2>Home</h2><p>管理首页文字、顺序、显示状态与布局。</p></div><button class="pill edit-only" data-action="add-home-section">添加区块</button></header>
+        <section class="hero-settings">
+          <header><div><span>Hero Appearance</span><h3>首页背景与精选内容</h3></div><label class="hero-upload edit-only">上传背景<input id="heroBackgroundInput" type="file" accept="image/*"></label></header>
+          <div id="heroMiniPreview" class="hero-mini-preview"><span>${data.site.title || "Duomei"}</span></div>
+          <div class="hero-setting-grid">
+            <label>背景模式<select data-hero-setting="mode"><option value="art">Travel Art</option><option value="image">Image</option><option value="color">Pure Color</option><option value="linear">Linear Gradient</option><option value="mesh">Mesh Gradient</option><option value="aurora">Aurora</option><option value="glass">Glass</option></select></label>
+            <label>纯色<input type="color" data-hero-setting="color" value="${data.site.hero.color}"></label>
+            <label class="wide">Linear Gradient<input data-hero-setting="gradient" value="${String(data.site.hero.gradient || "").replace(/"/g, "&quot;")}"></label>
+            <label>Hero 高度<input type="range" min="60" max="110" data-hero-setting="height" value="${data.site.hero.height}"><span>${data.site.hero.height}vh</span></label>
+            <label>Overlay<input type="range" min="0" max=".7" step=".01" data-hero-setting="overlay" value="${data.site.hero.overlay}"></label>
+            <label>Blur<input type="range" min="0" max="30" step="1" data-hero-setting="blur" value="${data.site.hero.blur}"></label>
+            <label>Glow<input type="range" min="0" max=".7" step=".01" data-hero-setting="glow" value="${data.site.hero.glow}"></label>
+            <label>对齐<select data-hero-setting="align"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+            <label>Featured<select data-hero-setting="featuredMode"><option value="manual">Manual</option><option value="recent">最近发布</option><option value="random">随机作品</option><option value="today">今日推荐</option><option value="week">本周精选</option><option value="quote">Today’s Quote</option></select></label>
+            <label>指定作品<select data-hero-setting="featuredJourney"><option value="">不指定</option>${data.journeys.filter((city) => city.status !== "asset").map((city) => `<option value="${city.id}">${city.title}</option>`).join("")}</select></label>
+            <label class="wide">Quote<textarea data-hero-setting="quote" rows="2">${data.site.hero.quote || ""}</textarea></label>
+            <label>作者<input data-hero-setting="quoteAuthor" value="${String(data.site.hero.quoteAuthor || "").replace(/"/g, "&quot;")}"></label>
+            <label class="setting-check"><input type="checkbox" data-hero-setting="noise" ${data.site.hero.noise !== false ? "checked" : ""}> Noise</label>
+            <label class="setting-check"><input type="checkbox" data-hero-setting="grain" ${data.site.hero.grain !== false ? "checked" : ""}> Grain</label>
+          </div>
+        </section>
         <div class="home-manager-list">${sections.map((section, index) => `<article>
           <span class="home-order">${String(index + 1).padStart(2, "0")}</span>
           <div><strong>${section.title || "未命名区块"}</strong><span>${section.eyebrow || "No eyebrow"} · ${section.layout}</span></div>
@@ -313,6 +408,11 @@
           <div class="home-button-fields edit-only"><label>Button<input data-home-button-label="${section.id}" value="${String(section.buttonLabel || "").replace(/"/g, "&quot;")}" placeholder="按钮文字"></label><label>URL<input data-home-button-url="${section.id}" value="${String(section.buttonUrl || "").replace(/"/g, "&quot;")}" placeholder="https://..."></label></div>
         </article>`).join("") || "<p>还没有首页区块。</p>"}</div>
         <button class="studio-open-home" type="button" data-open-home-editor>在网站中编辑文字与样式</button>`;
+      panel.querySelectorAll("[data-hero-setting]").forEach((control) => {
+        const value = data.site.hero[control.dataset.heroSetting];
+        if (control.type !== "checkbox" && value !== undefined) control.value = value;
+      });
+      updateHeroPreview();
     }
     if (type === "settings") {
       panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Preferences</span><h2>Settings</h2><p>当前 Studio 的连接与编辑状态。</p></div></header>
@@ -320,7 +420,20 @@
           <section><div><strong>Cloudflare Worker</strong><span>${window.ArchiveCMS.workerUrl() || "未配置"}</span></div><span class="sync-badge synced">Connected</span></section>
           <section><div><strong>管理员会话</strong><span>密钥仅保存在本次浏览器会话</span></div><span class="sync-badge synced">Protected</span></section>
           <section><div><strong>编辑安全模式</strong><span>浏览与编辑保持分离</span></div><span class="sync-badge ${window.ArchiveApp.state.editMode ? "pending" : "synced"}">${window.ArchiveApp.state.editMode ? "Editing" : "Browsing"}</span></section>
+        </div>
+        <div class="settings-grid">
+          <label>Theme<select data-site-setting="theme"><option value="light">Light</option><option value="dark">Dark</option><option value="auto">Auto</option></select></label>
+          <label>Image Quality<select data-site-setting="imageQuality"><option value=".75">Balanced · 75%</option><option value=".82">High · 82%</option><option value=".9">Maximum · 90%</option></select></label>
+          <label>Default Background<select data-site-setting="defaultBackground"><option value="art">Travel Art</option><option value="linear">Linear</option><option value="mesh">Mesh</option><option value="aurora">Aurora</option><option value="glass">Glass</option></select></label>
+          <label>Animation<select data-site-setting="animation"><option value="normal">Normal</option><option value="smooth">Smooth</option><option value="performance">Performance</option></select></label>
+          <label>Cursor<select data-site-setting="cursor"><option value="off">Off</option><option value="normal">Normal</option><option value="artistic">Artistic</option><option value="minimal">Minimal</option></select></label>
+          <label>Gallery Layout<select data-site-setting="galleryLayout"><option value="auto">Auto Layout</option><option value="masonry">Masonry</option><option value="justified">Justified</option><option value="fixed">Fixed Grid</option></select></label>
+          <label>Hero Style<select data-site-setting="heroStyle"><option value="art">Travel Art</option><option value="image">Image</option><option value="glass">Glass</option></select></label>
+          <label>Language<select data-site-setting="language"><option value="zh-CN">中文</option><option value="en">English</option><option value="ja">日本語</option></select></label>
         </div>`;
+      panel.querySelectorAll("[data-site-setting]").forEach((control) => {
+        control.value = String(data.settings[control.dataset.siteSetting] ?? "");
+      });
     }
     if (type === "recovery") {
       const list = await backups();
@@ -346,17 +459,41 @@
     const shell = document.querySelector(".studio-shell");
     document.querySelectorAll("[data-studio-view]").forEach((button) => button.classList.toggle("active", button.dataset.studioView === type));
     shell?.classList.remove("sidebar-open");
-    if (type === "journey") {
-      closeDashboard();
-      window.ArchiveApp.showHome();
-      return;
-    }
     const titles = { studio: "Studio", media: "Media", home: "Home", repository: "Repository", health: "Health", recovery: "Recovery", settings: "Settings" };
     document.getElementById("studioViewTitle").textContent = titles[type] || "Studio";
     home.hidden = type !== "studio";
     panel.hidden = type === "studio";
     if (type === "studio") await refreshDashboard();
     else await renderPanel(type);
+  }
+
+  function updateHeroPreview() {
+    const preview = document.getElementById("heroMiniPreview");
+    const data = window.ArchiveApp?.state?.data;
+    if (!preview || !data) return;
+    const hero = data.site.hero || {};
+    const asset = data.journeys.find((city) => city.id === hero.backgroundAssetId);
+    preview.dataset.mode = hero.mode || "art";
+    preview.style.backgroundColor = hero.color || "#f7f3eb";
+    preview.style.backgroundImage = hero.mode === "image" && asset?.coverImage
+      ? `linear-gradient(rgba(20,25,24,${hero.overlay || 0}),rgba(20,25,24,${hero.overlay || 0})),url("${asset.coverImage}")`
+      : hero.mode === "linear"
+        ? hero.gradient
+        : "";
+    preview.style.backgroundSize = "cover";
+    preview.style.backgroundPosition = "center";
+    preview.style.filter = `blur(${Number(hero.blur || 0) * .15}px)`;
+  }
+
+  async function afterPublish(status = "published") {
+    const lastPublish = JSON.parse(localStorage.getItem("duomei_last_publish") || "null");
+    if (lastPublish) {
+      lastPublish.status = status;
+      localStorage.setItem("duomei_last_publish", JSON.stringify(lastPublish));
+    }
+    await refreshDashboard();
+    const active = document.querySelector("[data-studio-view].active")?.dataset.studioView;
+    if (active && active !== "studio" && active !== "journey") await renderPanel(active);
   }
 
   function openDashboard() {
@@ -410,6 +547,14 @@
     document.getElementById("dashboardContinue")?.addEventListener("click", () => {
       closeDashboard();
       document.getElementById("editToggle")?.click();
+    });
+    document.getElementById("studioToggleEditor")?.addEventListener("click", () => {
+      document.getElementById("editToggle")?.click();
+    });
+    document.getElementById("studioViewSite")?.addEventListener("click", () => {
+      if (window.ArchiveApp.state.editMode) document.getElementById("editToggle")?.click();
+      closeDashboard();
+      window.ArchiveApp.showHome();
     });
     document.getElementById("studioCollapse")?.addEventListener("click", () => {
       document.querySelector(".studio-shell")?.classList.toggle("sidebar-collapsed");
@@ -470,6 +615,48 @@
         if (!window.ArchiveApp.state.editMode) document.getElementById("editToggle")?.click();
         document.getElementById("homeSections")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
+      if (event.target.closest("[data-media-download-selected]")) {
+        const selected = [...document.querySelectorAll("[data-media-select]:checked")];
+        if (!selected.length) return window.ArchiveUI?.toast("请先选择图片");
+        selected.forEach((input, index) => {
+          const city = window.ArchiveApp.state.data.journeys.find((item) => item.id === input.dataset.city);
+          const photo = city?.gallery.find((item) => item.id === input.dataset.photo);
+          const src = photo?.src || (input.dataset.kind.startsWith("Cover") || input.dataset.kind === "Home Hero" ? city?.coverImage : city?.cardImage);
+          if (!src) return;
+          window.setTimeout(() => {
+            const link = document.createElement("a");
+            link.href = src;
+            link.download = `${city?.slug || "photo"}-${input.dataset.photo || input.dataset.kind}.webp`;
+            link.click();
+          }, index * 180);
+        });
+      }
+      if (event.target.closest("[data-media-publish-selected]")) {
+        if (!document.querySelector("[data-media-select]:checked")) return window.ArchiveUI?.toast("请先选择图片");
+        document.getElementById("adminPublish")?.click();
+      }
+      if (event.target.closest("[data-media-delete-selected]")) {
+        const selected = [...document.querySelectorAll("[data-media-select]:checked")];
+        if (!selected.length) return window.ArchiveUI?.toast("请先选择图片");
+        if (!confirm(`确定删除选中的 ${selected.length} 张图片吗？`)) return;
+        await backup(window.ArchiveApp.state.data, "批量删除图片前").catch(() => {});
+        selected.forEach((input) => {
+          const city = window.ArchiveApp.state.data.journeys.find((item) => item.id === input.dataset.city);
+          if (!city) return;
+          if (input.dataset.photo) city.gallery = city.gallery.filter((photo) => photo.id !== input.dataset.photo);
+          else if (input.dataset.kind.startsWith("Cover") || input.dataset.kind === "Home Hero") {
+            city.coverImage = "";
+            city.coverThumb = "";
+          } else {
+            city.cardImage = "";
+            city.cardThumb = "";
+          }
+        });
+        window.ArchiveApp.state.hasUnpublishedChanges = true;
+        window.ArchiveStore.save(window.ArchiveApp.state.data, true);
+        window.ArchiveRender.renderApp(window.ArchiveApp.state);
+        await renderPanel("media");
+      }
     });
     document.addEventListener("input", (event) => {
       if (event.target.id === "mediaSearch") {
@@ -487,8 +674,47 @@
         window.ArchiveApp.state.hasUnpublishedChanges = true;
         window.ArchiveStore.save(window.ArchiveApp.state.data, true);
       }
+      const journeyView = event.target.closest("[data-journey-view]");
+      if (journeyView) {
+        closeDashboard();
+        window.ArchiveApp.openCity(journeyView.dataset.journeyView);
+      }
+      const heroKey = event.target.dataset.heroSetting;
+      if (heroKey) {
+        if (!window.ArchiveApp.state.editMode) return;
+        const numeric = ["height", "overlay", "blur", "glow"].includes(heroKey);
+        window.ArchiveApp.state.data.site.hero[heroKey] = event.target.type === "checkbox"
+          ? event.target.checked
+          : numeric
+            ? Number(event.target.value)
+            : event.target.value;
+        const valueLabel = event.target.parentElement?.querySelector(":scope > span");
+        if (valueLabel && heroKey === "height") valueLabel.textContent = `${event.target.value}vh`;
+        window.ArchiveApp.state.hasUnpublishedChanges = true;
+        window.ArchiveStore.save(window.ArchiveApp.state.data, true);
+        window.ArchiveManager.scheduleRecovery(window.ArchiveApp.state.data, "修改首页");
+        window.ArchiveRender.renderApp(window.ArchiveApp.state);
+        updateHeroPreview();
+      }
+      const settingKey = event.target.dataset.siteSetting;
+      if (settingKey) {
+        const value = settingKey === "imageQuality" ? Number(event.target.value) : event.target.value;
+        window.ArchiveApp.state.data.settings[settingKey] = value;
+        if (settingKey === "heroStyle" || settingKey === "defaultBackground") window.ArchiveApp.state.data.site.hero.mode = value;
+        window.ArchiveApp.state.hasUnpublishedChanges = true;
+        window.ArchiveStore.save(window.ArchiveApp.state.data, true);
+        window.ArchiveManager.scheduleRecovery(window.ArchiveApp.state.data, "修改设置");
+        window.ArchiveRender.renderApp(window.ArchiveApp.state);
+      }
+    });
+    document.addEventListener("change", async (event) => {
+      if (event.target.id !== "heroBackgroundInput") return;
+      const file = event.target.files?.[0];
+      if (file) await window.ArchiveEditor.uploadHeroBackground(file);
+      event.target.value = "";
+      updateHeroPreview();
     });
   }
 
-  window.ArchiveManager = { bind, openDashboard, refreshDashboard, backup, metrics, sizeLabel, operationProgress, completeOperation, failOperation };
+  window.ArchiveManager = { bind, openDashboard, refreshDashboard, afterPublish, backup, scheduleRecovery, cancelScheduledRecovery, metrics, sizeLabel, operationProgress, completeOperation, failOperation };
 })();

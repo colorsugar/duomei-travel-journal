@@ -79,8 +79,13 @@
         title: archive?.site?.title,
         subtitle: archive?.site?.subtitle,
         poem: archive?.site?.poem,
+        journeyEyebrow: archive?.site?.journeyEyebrow,
+        journeyTitle: archive?.site?.journeyTitle,
+        journeyDescription: archive?.site?.journeyDescription,
+        hero: archive?.site?.hero,
         homeSections: archive?.site?.homeSections
       },
+      settings: archive?.settings,
       journeys: (archive?.journeys || []).map((city) => ({
         slug: city.slug,
         title: city.title,
@@ -91,25 +96,46 @@
     });
   }
 
+  async function fetchPagesArchive() {
+    const bust = Date.now();
+    const [journeysResponse, settingsResponse] = await Promise.all([
+      fetch(`./content/journeys.json?deploy=${bust}`, { cache: "no-store" }),
+      fetch(`./content/settings.json?deploy=${bust}`, { cache: "no-store" })
+    ]);
+    if (!journeysResponse.ok || !settingsResponse.ok) throw new Error("Pages archive is not ready");
+    const journeys = await journeysResponse.json();
+    const settings = await settingsResponse.json();
+    return { journeys, site: settings.site, settings: settings.settings };
+  }
+
   async function waitForPages(expectedArchive) {
     const expected = archiveFingerprint(expectedArchive);
     const deadline = Date.now() + 90000;
     while (Date.now() < deadline) {
       try {
-        const bust = Date.now();
-        const [journeysResponse, settingsResponse] = await Promise.all([
-          fetch(`./content/journeys.json?deploy=${bust}`, { cache: "no-store" }),
-          fetch(`./content/settings.json?deploy=${bust}`, { cache: "no-store" })
-        ]);
-        if (journeysResponse.ok && settingsResponse.ok) {
-          const journeys = await journeysResponse.json();
-          const settings = await settingsResponse.json();
-          if (archiveFingerprint({ journeys, site: settings.site }) === expected) return true;
-        }
+        const live = await fetchPagesArchive();
+        if (archiveFingerprint(live) === expected) return true;
       } catch {}
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
     return false;
+  }
+
+  function hasEmbeddedImages(archive) {
+    return (archive?.journeys || []).some((city) =>
+      [city.coverImage, city.coverThumb, city.cardImage, city.cardThumb, ...(city.gallery || []).flatMap((photo) => [photo.src, photo.thumb])]
+        .some((value) => typeof value === "string" && (value.startsWith("data:") || value.startsWith("blob:")))
+    );
+  }
+
+  async function canonicalArchive(resultArchive) {
+    if (resultArchive && !hasEmbeddedImages(resultArchive)) return resultArchive;
+    const response = await window.ArchiveCMS.api("/api/archive", { timeoutMs: 30000 });
+    return {
+      site: response.settings?.site || {},
+      settings: response.settings?.settings || {},
+      journeys: response.journeys || []
+    };
   }
 
   async function publish() {
@@ -136,6 +162,7 @@
     try {
       window.ArchiveManager?.operationProgress(publishStages, 0, "准备发布");
       if (window.ArchiveManager) {
+        window.ArchiveManager.cancelScheduledRecovery();
         await window.ArchiveManager.backup(window.ArchiveApp.state.data, "发布前自动备份").catch(() => {});
       }
       window.ArchiveManager?.operationProgress(publishStages, 1, "正在更新 JSON");
@@ -152,21 +179,27 @@
         throw new Error("发布没有返回 commit，草稿已保留");
       }
 
-      if (result.archive) {
-        window.ArchiveApp.state.data = window.ArchiveStore.normalize(result.archive);
-        window.ArchiveStore.save(window.ArchiveApp.state.data, true);
-        window.ArchiveRender.renderApp(window.ArchiveApp.state);
-      }
-
-      window.ArchiveManager?.operationProgress(publishStages, 3, "Commit 已创建，等待 Pages");
-      const pagesReady = await waitForPages(result.archive || archive);
+      const syncedArchive = await canonicalArchive(result.archive);
+      window.ArchiveApp.state.data = window.ArchiveStore.normalize(syncedArchive);
+      window.ArchiveStore.save(window.ArchiveApp.state.data, true);
+      window.ArchiveRender.renderApp(window.ArchiveApp.state);
       window.ArchiveCMS.clearDraft();
       window.ArchiveApp.state.hasUnpublishedChanges = false;
       localStorage.setItem("duomei_last_publish", JSON.stringify({
         savedAt: new Date().toISOString(),
-        commit: result.commit
+        commit: result.commit,
+        status: "waiting-pages"
       }));
+      await window.ArchiveManager?.afterPublish("waiting-pages");
+
+      window.ArchiveManager?.operationProgress(publishStages, 3, "Commit 已创建，等待 Pages");
+      const pagesReady = await waitForPages(syncedArchive);
       if (pagesReady) {
+        const liveArchive = await fetchPagesArchive();
+        window.ArchiveApp.state.data = window.ArchiveStore.normalize(liveArchive);
+        window.ArchiveStore.save(window.ArchiveApp.state.data, true);
+        window.ArchiveRender.renderApp(window.ArchiveApp.state);
+        await window.ArchiveManager?.afterPublish("published");
         window.ArchiveManager?.operationProgress(publishStages, 4, "网站已经更新");
         window.ArchiveManager?.completeOperation("发布完成");
         toast(`发布成功：${result.commit.slice(0, 7)}${result.uploads ? `，图片 ${result.uploads} 张` : ""}`);
@@ -200,7 +233,6 @@
     if (!document.body.classList.contains("admin-authenticated")) return;
     if (!window.ArchiveApp?.state?.data) return;
     window.ArchiveCMS.saveDraft(window.ArchiveApp.state.data);
-    window.ArchiveManager?.backup(window.ArchiveApp.state.data, "30 秒自动保存")?.catch(() => {});
     setAdminStatus("草稿已自动保存");
   }
 

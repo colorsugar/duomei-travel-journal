@@ -34,6 +34,7 @@
       originalBytes: Number(photo.originalBytes || 0),
       outputBytes: Number(photo.outputBytes || 0),
       uploadedAt: photo.uploadedAt || "",
+      aspectMode: photo.aspectMode || "original",
       styles: {
         title: photo.styles?.title || {},
         caption: photo.styles?.caption || {},
@@ -69,6 +70,7 @@
     city.cardImage = item.cardImage || "";
     city.cardThumb = item.cardThumb || "";
     city.theme = item.theme || null;
+    city.galleryLayout = item.galleryLayout || "auto";
     city.styles = item.styles || {};
     city.gallery = Array.isArray(item.gallery)
       ? item.gallery.map(normalizePhoto)
@@ -87,6 +89,27 @@
       ...base.site,
       ...(incoming.site || {}),
       styles: { ...base.site.styles, ...(incoming.site?.styles || {}) }
+    };
+    site.journeyEyebrow = incoming.site?.journeyEyebrow ?? "Journey";
+    site.journeyTitle = incoming.site?.journeyTitle ?? "慢慢翻阅";
+    site.journeyDescription = incoming.site?.journeyDescription ?? "从一个地方，慢慢走到下一个地方。";
+    site.hero = {
+      mode: "art",
+      backgroundImage: "",
+      color: "#f7f3eb",
+      gradient: "linear-gradient(135deg,#edf3f1 0%,#f8f4eb 52%,#e2ebe7 100%)",
+      overlay: 0.12,
+      blur: 0,
+      glow: 0.22,
+      noise: true,
+      grain: true,
+      height: 88,
+      align: "left",
+      featuredMode: "manual",
+      featuredJourney: "",
+      quote: "",
+      quoteAuthor: "",
+      ...(incoming.site?.hero || {})
     };
     site.homeSections = Array.isArray(incoming.site?.homeSections)
       ? incoming.site.homeSections.map((section, index) => ({
@@ -118,7 +141,18 @@
     return {
       version: 3,
       site,
-      settings: { ...base.settings, ...(incoming.settings || {}) },
+      settings: {
+        ...base.settings,
+        theme: "auto",
+        imageQuality: .82,
+        defaultBackground: "art",
+        animation: "smooth",
+        cursor: "artistic",
+        galleryLayout: "auto",
+        heroStyle: "art",
+        language: "zh-CN",
+        ...(incoming.settings || {})
+      },
       journeys: journeys.map(normalizeCity),
       notes: Array.isArray(incoming.notes) ? incoming.notes : []
     };

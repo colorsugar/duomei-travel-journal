@@ -6,6 +6,7 @@
   const image = () => document.getElementById("cropImage");
   const zoom = () => document.getElementById("cropZoom");
   const zoomText = () => document.getElementById("cropZoomText");
+  const aspect = () => document.getElementById("cropAspect");
 
   async function cropFile(file) {
     if (!file || !file.type.startsWith("image/")) return "";
@@ -25,8 +26,10 @@
           dragging: false,
           pointers: new Map()
         };
+        state.cropRatio = img.naturalWidth / img.naturalHeight;
         image().src = src;
         zoom().value = "1";
+        aspect().value = "original";
         zoomText().textContent = "100%";
         if (typeof dialog().showModal === "function") dialog().showModal();
         else dialog().setAttribute("open", "open");
@@ -44,7 +47,25 @@
 
   function frame() {
     const rect = stage().getBoundingClientRect();
-    return { x: rect.width * .08, y: rect.height * .08, width: rect.width * .84, height: rect.height * .84 };
+    const maxWidth = rect.width * .84;
+    const maxHeight = rect.height * .84;
+    const ratio = state?.cropRatio || maxWidth / maxHeight;
+    let width = maxWidth;
+    let height = width / ratio;
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * ratio;
+    }
+    const result = { x: (rect.width - width) / 2, y: (rect.height - height) / 2, width, height };
+    const frameNode = document.querySelector(".crop-frame");
+    if (frameNode) {
+      frameNode.style.inset = "auto";
+      frameNode.style.left = `${result.x}px`;
+      frameNode.style.top = `${result.y}px`;
+      frameNode.style.width = `${result.width}px`;
+      frameNode.style.height = `${result.height}px`;
+    }
+    return result;
   }
 
   function fit() {
@@ -89,8 +110,9 @@
     const sy = Math.max(0, (f.y - top) / (state.baseScale * state.scale));
     const sw = Math.min(state.naturalWidth - sx, f.width / (state.baseScale * state.scale));
     const sh = Math.min(state.naturalHeight - sy, f.height / (state.baseScale * state.scale));
-    const width = 1600;
-    const height = Math.round(width * f.height / f.width);
+    const outputRatio = f.width / f.height;
+    const width = outputRatio >= 1 ? 1800 : Math.round(1800 * outputRatio);
+    const height = outputRatio >= 1 ? Math.round(1800 / outputRatio) : 1800;
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
@@ -98,7 +120,8 @@
     ctx.fillStyle = "#f7f3eb";
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(image(), sx, sy, sw, sh, 0, 0, width, height);
-    const output = canvas.toDataURL("image/webp", .82);
+    const quality = Number(window.ArchiveApp?.state?.data?.settings?.imageQuality || .82);
+    const output = canvas.toDataURL("image/webp", Math.min(.95, Math.max(.55, quality)));
     const outputBytes = Math.round((output.length - output.indexOf(",") - 1) * .75);
     window.ArchiveImage.lastCompression = {
       name: state.file?.name || "image",
@@ -106,6 +129,7 @@
       outputBytes,
       width,
       height,
+      aspectMode: aspect().value,
       uploadedAt: new Date().toISOString()
     };
     finish(output);
@@ -242,6 +266,13 @@
       update();
     }, { passive: false });
     zoom().addEventListener("input", () => { if (state) { state.scale = Number(zoom().value); update(); } });
+    aspect().addEventListener("change", () => {
+      if (!state) return;
+      state.cropRatio = ["original", "free"].includes(aspect().value)
+        ? state.naturalWidth / state.naturalHeight
+        : Number(aspect().value);
+      fit();
+    });
     document.querySelector('[data-action="crop-save"]').addEventListener("click", saveCrop);
     document.querySelector('[data-action="crop-reset"]').addEventListener("click", fit);
     document.querySelector('[data-action="crop-cancel"]').addEventListener("click", () => finish(""));

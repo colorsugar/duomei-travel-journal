@@ -12,6 +12,7 @@
 
   function markDirty(state) {
     state.hasUnpublishedChanges = true;
+    window.ArchiveManager?.scheduleRecovery(state.data, "内容修改");
   }
 
   function undo(state) {
@@ -98,7 +99,7 @@
       .filter((tag) => !current.has(tag) && (!query || tag.toLowerCase().includes(query.toLowerCase())))
       .slice(0, 8);
     root.innerHTML = candidates.length
-      ? `<span>${query ? "自动补全" : "最近 / 热门"}</span>${candidates.map((tag) => `<button type="button" data-suggest-tag="${encodeURIComponent(tag)}">#${tag.replace(/[<>&"]/g, "")}</button>`).join("")}`
+      ? `<span>${query ? "自动补全" : "最近 / 热门"}</span>${candidates.map((tag) => `<button type="button" data-suggest-tag="${encodeURIComponent(tag)}">#${tag.replace(/[<>&"]/g, "")}${counts[tag] ? ` · ${counts[tag]}` : ""}</button>`).join("")}`
       : "";
   }
 
@@ -272,6 +273,7 @@
     $("#cityPlace").value = city?.place || "";
     $("#cityPublished").value = city?.published || today();
     $("#cityCategory").value = city?.category || "Travel";
+    $("#cityGalleryLayout").value = city?.galleryLayout || state.data.settings.galleryLayout || "auto";
     renderTagChips(city?.tags || []);
     $("#cityTagInput").value = "";
     renderTagSuggestions();
@@ -303,6 +305,7 @@
     city.published = formValue("cityPublished") || today();
     city.updated = today();
     city.category = formValue("cityCategory");
+    city.galleryLayout = $("#cityGalleryLayout")?.value || "auto";
     city.excerpt = formValue("cityExcerpt");
     city.bodyTop = formValue("cityBody");
     addPendingTag();
@@ -622,13 +625,46 @@
     state.editMode = !state.editMode;
     $("#editToggle").setAttribute("aria-pressed", String(state.editMode));
     $("#editToggle").textContent = state.editMode ? "完成编辑" : "编辑模式";
-    if ($("#adminDashboard")) $("#adminDashboard").textContent = state.editMode ? "编辑模式" : "浏览模式";
+    if ($("#adminDashboard")) $("#adminDashboard").textContent = "Back to Studio";
+    if ($("#studioToggleEditor")) $("#studioToggleEditor").textContent = state.editMode ? "Exit Editor" : "Enter Editor";
     window.ArchiveRender.setEditable(state.editMode);
     document.body.classList.toggle("edit-on", state.editMode);
     window.ArchiveRender.renderApp(state);
     if (!state.editMode) {
       state.activeEditable = null;
       $("#textToolbar")?.classList.remove("show");
+    }
+  }
+
+  async function uploadHeroBackground(file) {
+    const state = window.ArchiveApp?.state;
+    if (!state || !isEditing(state) || !file) return;
+    beginUploadProgress([file]);
+    try {
+      const result = await cropAndTheme(file, (status) => updateUploadProgress(0, 1, file, status));
+      if (!result) return;
+      let asset = state.data.journeys.find((city) => city.status === "asset" && city.slug === "_home-assets");
+      if (!asset) {
+        asset = window.ArchiveData.createCity("_home-assets", "Home Assets", "", "", "", []);
+        asset.id = "system-home-assets";
+        asset.status = "asset";
+        asset.gallery = [];
+        state.data.journeys.push(asset);
+      }
+      asset.coverImage = result.image;
+      asset.coverThumb = result.thumb;
+      asset.coverMeta = result.meta || {};
+      state.data.site.hero.backgroundAssetId = asset.id;
+      state.data.site.hero.mode = "image";
+      markDirty(state);
+      window.ArchiveStore.save(state.data, true);
+      await window.ArchiveManager?.backup(state.data, "修改首页背景")?.catch(() => {});
+      window.ArchiveRender.renderApp(state);
+      updateUploadProgress(0, 1, file, "首页背景已更新", result.meta?.outputBytes || 0);
+      finishUploadProgress();
+    } catch (error) {
+      window.ArchiveManager?.failOperation(error.message);
+      window.ArchiveUI?.toast(error.message || "首页背景处理失败");
     }
   }
 
@@ -692,10 +728,26 @@
       if (event.target.matches("[data-style]") && isEditing(state)) applyStyleControl(state, event.target);
     });
 
+    document.addEventListener("change", (event) => {
+      const photoId = event.target.dataset.photoRatio;
+      if (!photoId || !isEditing(state)) return;
+      const city = cityById(state.data, event.target.dataset.city);
+      const photo = city?.gallery.find((item) => item.id === photoId);
+      if (!photo) return;
+      remember(state);
+      photo.aspectMode = event.target.value;
+      touch(city);
+      markDirty(state);
+      window.ArchiveStore.save(state.data, true);
+      window.ArchiveRender.renderApp(state);
+    });
+
     $("#importInput")?.addEventListener("change", async (event) => {
       const file = event.target.files[0];
       if (!file) return;
+      await window.ArchiveManager?.backup(state.data, "导入 JSON 前")?.catch(() => {});
       state.data = await window.ArchiveStore.importJson(file);
+      markDirty(state);
       state.currentSlug = "";
       window.ArchiveStore.save(state.data);
       window.ArchiveRender.renderApp(state);
@@ -730,5 +782,5 @@
     bindGlobalActions(state);
   }
 
-  window.ArchiveEditor = { init };
+  window.ArchiveEditor = { init, uploadHeroBackground };
 })();

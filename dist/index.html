@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>多美 | Travel Journal</title>
-  <link rel="stylesheet" href="./css/archive.css?v=20260627-v32-studio">
+  <link rel="stylesheet" href="./css/archive.css?v=20260627-v4-polish">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -22,7 +22,7 @@
       <button class="pill edit-only admin-only" type="button" data-action="export">导出 JSON</button>
       <button class="pill edit-only admin-only" type="button" data-action="import">导入 JSON</button>
       <button class="pill edit-only admin-only" type="button" data-action="undo">撤销</button>
-      <button class="pill admin-only admin-mode-indicator" id="adminDashboard" type="button">浏览模式</button>
+      <button class="pill admin-only admin-mode-indicator" id="adminDashboard" type="button">Back to Studio</button>
       <span class="pill admin-status" id="adminStatus">后台已连接</span>
       <button class="pill admin-only" id="adminLogout" type="button">退出管理</button>
       <input id="importInput" class="sr-file" type="file" accept="application/json">
@@ -51,14 +51,18 @@
           <p class="site-subtitle editable" data-bind="site.subtitle">Travel Journal</p>
           <p class="site-poem editable" data-bind="site.poem">记录一路看到的风景，<br>也记录一路走过的生活。</p>
         </div>
+        <aside id="heroFeatured" class="hero-featured"></aside>
       </section>
 
       <section id="homeSections" class="home-sections"></section>
 
       <section class="journey-section">
         <div class="section-head">
-          <p class="section-kicker">Journey</p>
-          <h2>慢慢翻阅</h2>
+          <div>
+            <p class="section-kicker editable" data-bind="site.journeyEyebrow">Journey</p>
+            <h2 class="editable" data-bind="site.journeyTitle">慢慢翻阅</h2>
+            <p class="section-description editable" data-bind="site.journeyDescription">从一个地方，慢慢走到下一个地方。</p>
+          </div>
           <label class="search-wrap">
             <input id="searchInput" type="search" placeholder="搜索城市、正文、Tag、年份">
           </label>
@@ -176,6 +180,8 @@
           <div><span id="studioBreadcrumb">Duomei Studio</span><strong id="studioViewTitle">Studio</strong></div>
           <div class="studio-toolbar-actions">
             <span class="studio-sync"><i></i> 已连接</span>
+            <button id="studioViewSite" class="studio-command" type="button">View Site</button>
+            <button id="studioToggleEditor" class="studio-command primary" type="button">Enter Editor</button>
             <button id="dashboardClose" class="dialog-close" type="button" data-icon="x" aria-label="关闭"></button>
           </div>
         </header>
@@ -201,6 +207,11 @@
                 <footer><span>建议图片 300KB–800KB</span><strong id="estimatedPhotos">--</strong></footer>
               </section>
             </div>
+            <section class="studio-assistant">
+              <span>Studio Assistant</span>
+              <h3 id="studioAssistantTitle">你的作品档案状态良好。</h3>
+              <div id="studioAssistantList"></div>
+            </section>
             <div class="dashboard-metrics">
               <section><span>Journey</span><strong id="dashboardJourneys">0</strong><small>旅行档案</small></section>
               <section><span>图片</span><strong id="dashboardPhotos">0</strong><small id="dashboardAverage">平均 --</small></section>
@@ -212,7 +223,7 @@
               <section><span>最近发布</span><strong id="dashboardPublish">--</strong><small id="dashboardCommit">等待记录</small></section>
             </div>
             <section class="studio-publish-card">
-              <div><span>Publish Status</span><h3>作品已与 GitHub 同步</h3><p>只有进入编辑模式并点击发布，线上网站才会更新。</p></div>
+              <div><span>Publish Status</span><h3 id="studioPublishTitle">作品已与 GitHub 同步</h3><p id="studioPublishText">只有进入编辑模式并点击发布，线上网站才会更新。</p></div>
               <button class="dashboard-action primary" id="dashboardContinue" type="button" data-icon="pencil"><strong>继续编辑</strong><span>进入安全编辑模式</span></button>
             </section>
           </section>
@@ -234,6 +245,7 @@
         <label>日期<input id="cityPublished" placeholder="2026.06"></label>
         <label>地点<input id="cityPlace" placeholder="eg. Osaka, Japan"></label>
         <label>分类<input id="cityCategory" placeholder="eg. Travel"></label>
+        <label>Gallery 布局<select id="cityGalleryLayout"><option value="auto">Auto Layout</option><option value="masonry">Masonry</option><option value="justified">Justified</option><option value="fixed">Fixed Grid</option></select></label>
         <label class="wide">Tag
           <div class="tag-editor">
             <div id="cityTagChips" class="tag-chip-list"></div>
@@ -265,6 +277,18 @@
         <div class="crop-frame" aria-hidden="true"></div>
       </div>
       <input id="cropZoom" class="crop-range" type="range" min="1" max="3" step=".01" value="1">
+      <label class="crop-aspect-label">裁剪比例
+        <select id="cropAspect">
+          <option value="original">Original</option>
+          <option value="1">1:1</option>
+          <option value="1.333333">4:3</option>
+          <option value="1.5">3:2</option>
+          <option value="1.777778">16:9</option>
+          <option value=".5625">9:16</option>
+          <option value="2.333333">21:9</option>
+          <option value="free">Free Crop</option>
+        </select>
+      </label>
       <footer class="dialog-actions">
         <button class="pill" value="cancel" data-action="crop-cancel">取消</button>
         <button class="pill" type="button" data-action="crop-reset">重置</button>
@@ -274,22 +298,28 @@
   </dialog>
 
   <div id="lightbox" class="lightbox" aria-hidden="true">
-    <button type="button" class="lightbox-close" data-action="lightbox-close">×</button>
+    <button type="button" class="lightbox-back" data-action="lightbox-close">‹ Back to Journey</button>
+    <button type="button" class="lightbox-close" data-action="lightbox-close" aria-label="关闭">×</button>
     <button type="button" class="lightbox-nav prev" data-action="lightbox-prev">‹</button>
-    <img id="lightboxImage" alt="">
+    <div class="lightbox-stage">
+      <div id="lightboxSkeleton" class="lightbox-skeleton" aria-hidden="true"></div>
+      <img id="lightboxImage" alt="">
+      <p id="lightboxError" class="lightbox-error" hidden>这张照片暂时无法显示。返回 Journey 后可以重新上传。</p>
+    </div>
     <button type="button" class="lightbox-nav next" data-action="lightbox-next">›</button>
+    <span id="lightboxCounter" class="lightbox-counter"></span>
     <p id="lightboxCaption"></p>
   </div>
 
-  <script src="./js/data.js?v=20260627-v32-studio"></script>
-  <script src="./js/store.js?v=20260627-v32-studio"></script>
-  <script src="./js/image.js?v=20260627-v32-studio"></script>
-  <script src="./js/render.js?v=20260627-v32-studio"></script>
-  <script src="./js/editor.js?v=20260627-v32-studio"></script>
-  <script src="./js/interactions.js?v=20260627-v32-studio"></script>
-  <script src="./js/cms-client.js?v=20260627-v32-studio"></script>
-  <script src="./js/manager.js?v=20260627-v32-studio"></script>
-  <script src="./js/admin.js?v=20260627-v32-studio"></script>
-  <script src="./js/app.js?v=20260627-v32-studio"></script>
+  <script src="./js/data.js?v=20260627-v4-polish"></script>
+  <script src="./js/store.js?v=20260627-v4-polish"></script>
+  <script src="./js/image.js?v=20260627-v4-polish"></script>
+  <script src="./js/render.js?v=20260627-v4-polish"></script>
+  <script src="./js/editor.js?v=20260627-v4-polish"></script>
+  <script src="./js/interactions.js?v=20260627-v4-polish"></script>
+  <script src="./js/cms-client.js?v=20260627-v4-polish"></script>
+  <script src="./js/manager.js?v=20260627-v4-polish"></script>
+  <script src="./js/admin.js?v=20260627-v4-polish"></script>
+  <script src="./js/app.js?v=20260627-v4-polish"></script>
 </body>
 </html>

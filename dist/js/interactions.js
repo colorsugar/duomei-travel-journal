@@ -51,11 +51,12 @@
     document.addEventListener("pointermove", (event) => {
       tx = event.clientX;
       ty = event.clientY;
-      if (!document.body.classList.contains("admin-authenticated")) cursor.style.opacity = "1";
+      if (!document.body.classList.contains("admin-authenticated") && ["artistic", "minimal"].includes(document.body.dataset.cursorMode)) cursor.style.opacity = "1";
     }, { passive: true });
 
     function frame(time) {
-      if (document.body.classList.contains("admin-authenticated")) {
+      const cursorMode = document.body.dataset.cursorMode || "artistic";
+      if (document.body.classList.contains("admin-authenticated") || ["off", "normal"].includes(cursorMode)) {
         visible += (0 - visible) * 0.18;
         cursor.style.opacity = String(visible);
         window.setTimeout(() => requestAnimationFrame(frame), 180);
@@ -63,10 +64,12 @@
       }
       x += (tx - x) * 0.42;
       y += (ty - y) * 0.42;
-      visible += (0.38 - visible) * 0.1;
+      visible += ((cursorMode === "minimal" ? .24 : .38) - visible) * 0.1;
       cursor.style.opacity = String(visible);
       cursor.style.transform = `translate3d(${x + 18}px, ${y + 16}px, 0) scale(.72) rotate(${Math.sin(time / 1600) * 5}deg)`;
-      if (time - lastSwitch > 33000) {
+      if (cursorMode === "minimal") {
+        cursor.textContent = "·";
+      } else if (time - lastSwitch > 33000) {
         iconIndex = (iconIndex + 1) % cursorIcons.length;
         cursor.textContent = cursorIcons[iconIndex];
         lastSwitch = time;
@@ -119,7 +122,7 @@
       window.ArchiveRender.renderJourney(stateRef, stateRef.data.journeys);
       return;
     }
-    const list = stateRef.data.journeys.filter((city) => {
+    const list = stateRef.data.journeys.filter((city) => city.status !== "asset").filter((city) => {
       const hay = [
         city.title,
         city.place,
@@ -138,9 +141,16 @@
 
   function openLightbox(cityId, photoId) {
     const city = stateRef.data.journeys.find((item) => item.id === cityId || item.slug === cityId);
-    if (!city) return;
-    lightboxPhotos = city.gallery;
-    lightboxIndex = Math.max(0, city.gallery.findIndex((photo) => photo.id === photoId));
+    if (!city) {
+      window.ArchiveUI?.toast("没有找到这个 Journey");
+      return;
+    }
+    lightboxPhotos = (city.gallery || []).filter((photo) => photo.src || photo.image || photo.thumb);
+    lightboxIndex = lightboxPhotos.findIndex((photo) => photo.id === photoId);
+    if (!lightboxPhotos.length || lightboxIndex < 0) {
+      window.ArchiveUI?.toast("这张照片不存在或尚未上传");
+      return;
+    }
     updateLightbox();
     $("#lightbox").classList.add("show");
     $("#lightbox").setAttribute("aria-hidden", "false");
@@ -148,13 +158,30 @@
 
   function updateLightbox() {
     const photo = lightboxPhotos[lightboxIndex];
-    if (!photo) return;
-    $("#lightboxImage").src = photo.src || photo.image || photo.thumb || "";
+    const src = photo?.src || photo?.image || photo?.thumb || "";
+    if (!photo || !src) {
+      closeLightbox();
+      window.ArchiveUI?.toast("照片不存在，已返回 Journey");
+      return;
+    }
+    const image = $("#lightboxImage");
+    $("#lightbox").classList.add("is-loading");
+    $("#lightboxError").hidden = true;
+    image.removeAttribute("src");
+    image.src = src;
+    image.alt = photo.alt || photo.title || photo.caption || "Travel photo";
+    $("#lightboxCounter").textContent = `${lightboxIndex + 1} / ${lightboxPhotos.length}`;
     $("#lightboxCaption").innerHTML = [
       photo.title ? `<strong>${esc(photo.title)}</strong>` : "",
       esc(photo.caption || ""),
       esc([photo.place, photo.takenAt, photo.camera].filter(Boolean).join(" · "))
     ].filter(Boolean).join("<br>");
+  }
+
+  function closeLightbox() {
+    $("#lightbox").classList.remove("show", "is-loading", "has-error");
+    $("#lightbox").setAttribute("aria-hidden", "true");
+    $("#lightboxImage").removeAttribute("src");
   }
 
   function moveLightbox(step) {
@@ -175,8 +202,7 @@
         if (city) openLightbox(city.id, film.dataset.lightboxPhoto);
       }
       if (event.target.closest("[data-lightbox='close'], [data-action='lightbox-close']")) {
-        $("#lightbox").classList.remove("show");
-        $("#lightbox").setAttribute("aria-hidden", "true");
+        closeLightbox();
       }
       if (event.target.closest("[data-lightbox='prev'], [data-action='lightbox-prev']")) moveLightbox(-1);
       if (event.target.closest("[data-lightbox='next'], [data-action='lightbox-next']")) moveLightbox(1);
@@ -184,7 +210,7 @@
 
     document.addEventListener("keydown", (event) => {
       if (!$("#lightbox").classList.contains("show")) return;
-      if (event.key === "Escape") $("#lightbox").classList.remove("show");
+      if (event.key === "Escape") closeLightbox();
       if (event.key === "ArrowLeft") moveLightbox(-1);
       if (event.key === "ArrowRight") moveLightbox(1);
     });
@@ -196,6 +222,17 @@
     $("#lightbox").addEventListener("touchend", (event) => {
       const dx = event.changedTouches[0].clientX - startX;
       if (Math.abs(dx) > 48) moveLightbox(dx > 0 ? -1 : 1);
+    });
+    $("#lightboxImage").addEventListener("load", () => {
+      $("#lightbox").classList.remove("is-loading", "has-error");
+      $("#lightboxError").hidden = true;
+    });
+    $("#lightboxImage").addEventListener("error", () => {
+      $("#lightbox").classList.remove("is-loading");
+      $("#lightbox").classList.add("has-error");
+      $("#lightboxError").hidden = false;
+      window.ArchiveUI?.toast("照片加载失败，正在返回 Journey");
+      window.setTimeout(closeLightbox, 2200);
     });
   }
 
