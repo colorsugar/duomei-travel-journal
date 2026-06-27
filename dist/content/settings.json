@@ -31,13 +31,40 @@
         "order": 1,
         "styles": {}
       }
-    ]
+    ],
+    "journeyEyebrow": "Journey",
+    "journeyTitle": "慢慢翻阅",
+    "journeyDescription": "从一个地方，慢慢走到下一个地方。",
+    "hero": {
+      "mode": "art",
+      "backgroundImage": "",
+      "color": "#f7f3eb",
+      "gradient": "linear-gradient(135deg,#edf3f1 0%,#f8f4eb 52%,#e2ebe7 100%)",
+      "overlay": 0.12,
+      "blur": 0,
+      "glow": 0.22,
+      "noise": true,
+      "grain": true,
+      "height": 88,
+      "align": "left",
+      "featuredMode": "manual",
+      "featuredJourney": "",
+      "quote": "",
+      "quoteAuthor": ""
+    }
   },
   "settings": {
     "analytics": {
       "cloudflare": "",
       "firebase": "",
       "umami": ""
-    }
+    },
+    "theme": "auto",
+    "imageQuality": 0.82,
+    "defaultBackground": "art",
+    "animation": "smooth",
+    "galleryLayout": "auto",
+    "heroStyle": "art",
+    "language": "zh-CN"
   }
 }
