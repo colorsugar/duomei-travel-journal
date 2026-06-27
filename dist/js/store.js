@@ -13,6 +13,32 @@
       : String(value || "").split(/[,，\s]+/).map((tag) => tag.trim()).filter(Boolean);
   }
 
+  function cleanText(value = "") {
+    return String(value)
+      .replace(/&nbsp;/gi, " ")
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+$/g, "");
+  }
+
+  function normalizeNavItems(value) {
+    const defaults = [
+      { key: "travel", label: "游", title: "旅行", visible: true, order: 1, target: "journey", type: "travel" },
+      { key: "photo", label: "景", title: "摄影", visible: true, order: 2, target: "gallery", type: "photo" },
+      { key: "thought", label: "想", title: "灵感", visible: true, order: 3, target: "thought", type: "thought" },
+      { key: "essay", label: "文", title: "文章", visible: true, order: 4, target: "essay", type: "essay" }
+    ];
+    const items = Array.isArray(value) && value.length ? value : defaults;
+    return items.map((item, index) => ({
+      key: cleanText(item.key || defaults[index]?.key || `nav-${index}`),
+      label: cleanText(item.label || defaults[index]?.label || ""),
+      title: cleanText(item.title || defaults[index]?.title || ""),
+      visible: item.visible !== false,
+      order: Number.isFinite(Number(item.order)) ? Number(item.order) : index + 1,
+      target: cleanText(item.target || defaults[index]?.target || "journey"),
+      type: cleanText(item.type || defaults[index]?.type || "custom")
+    })).sort((a, b) => a.order - b.order);
+  }
+
   function normalizePhoto(photo = {}, index = 0) {
     if (typeof photo === "string") {
       photo = { src: photo.startsWith("data:") ? photo : "" };
@@ -22,13 +48,13 @@
       id: photo.id || window.ArchiveData.id("photo"),
       src: photo.src || photo.image || "",
       thumb: photo.thumb || "",
-      title: photo.title || "",
-      caption,
-      alt: photo.alt || photo.title || caption || "",
-      place: photo.place || photo.location || "",
-      takenAt: photo.takenAt || photo.date || "",
-      camera: photo.camera || "",
-      notes: photo.notes || photo.remark || "",
+      title: cleanText(photo.title || ""),
+      caption: cleanText(caption),
+      alt: cleanText(photo.alt || photo.title || caption || ""),
+      place: cleanText(photo.place || photo.location || ""),
+      takenAt: cleanText(photo.takenAt || photo.date || ""),
+      camera: cleanText(photo.camera || ""),
+      notes: cleanText(photo.notes || photo.remark || ""),
       width: Number(photo.width || 0),
       height: Number(photo.height || 0),
       originalBytes: Number(photo.originalBytes || 0),
@@ -58,15 +84,20 @@
 
     city.id = city.id || window.ArchiveData.id(city.slug || "journey");
     city.slug = city.slug || String(city.title || city.id).toLowerCase();
+    city.title = cleanText(city.title);
     city.published = item.published || item.date || city.published || "";
     city.updated = item.updated || new Date().toISOString().slice(0, 10);
     city.views = Number(item.views || 0);
-    city.category = item.category !== undefined ? item.category : (city.category || "Travel");
-    city.place = item.place || item.location || city.place || "";
+    city.category = cleanText(item.category !== undefined ? item.category : (city.category || "Travel"));
+    city.place = cleanText(item.place || item.location || city.place || "");
+    city.excerpt = cleanText(city.excerpt);
+    city.bodyTop = cleanText(city.bodyTop);
+    city.bodyBottom = cleanText(city.bodyBottom);
+    city.mapText = cleanText(city.mapText);
     city.tags = asTags(item.tags || city.tags);
     city.coverImage = item.coverImage || "";
     city.coverThumb = item.coverThumb || "";
-    city.coverCaption = item.coverCaption || item.heroCaption || "";
+    city.coverCaption = cleanText(item.coverCaption || item.heroCaption || "");
     city.cardImage = item.cardImage || "";
     city.cardThumb = item.cardThumb || "";
     city.theme = item.theme || null;
@@ -138,6 +169,26 @@
           order: 0,
           styles: {}
         }];
+    site.title = cleanText(site.title);
+    site.subtitle = cleanText(site.subtitle);
+    site.poem = cleanText(site.poem);
+    site.journeyEyebrow = cleanText(site.journeyEyebrow);
+    site.journeyTitle = cleanText(site.journeyTitle);
+    site.journeyDescription = cleanText(site.journeyDescription);
+    if (!incoming.site?.hero?.mode || site.hero.mode === "art") site.hero.mode = "image";
+    if (!incoming.site?.hero?.color) site.hero.color = "#151716";
+    if (!incoming.site?.hero?.gradient) site.hero.gradient = "linear-gradient(135deg,#151716 0%,#222724 100%)";
+    if (incoming.site?.hero?.overlay === undefined) site.hero.overlay = 0.48;
+    if (incoming.site?.hero?.glow === undefined) site.hero.glow = 0.18;
+    site.homeSections.forEach((section) => {
+      section.eyebrow = cleanText(section.eyebrow);
+      section.title = cleanText(section.title);
+      section.subtitle = cleanText(section.subtitle);
+      section.body = cleanText(section.body);
+      section.buttonLabel = cleanText(section.buttonLabel);
+      section.buttonUrl = cleanText(section.buttonUrl);
+    });
+
     return {
       version: 3,
       site,
@@ -150,7 +201,8 @@
         galleryLayout: "auto",
         heroStyle: "art",
         language: "zh-CN",
-        ...(incoming.settings || {})
+        ...(incoming.settings || {}),
+        navItems: normalizeNavItems(incoming.settings?.navItems || base.settings?.navItems)
       },
       journeys: journeys.map(normalizeCity),
       notes: Array.isArray(incoming.notes) ? incoming.notes : []

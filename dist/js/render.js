@@ -60,6 +60,20 @@
       journeyDescription.setAttribute("style", style(state.data.site.styles?.journeyDescription));
     }
     applyHero(state);
+    renderPublicNav(state);
+  }
+
+  function renderPublicNav(state) {
+    const nav = $("#publicNav");
+    if (!nav) return;
+    const items = (state.data.settings?.navItems || [])
+      .filter((item) => item.visible !== false)
+      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+    nav.innerHTML = items.map((item) => `
+      <button class="pill" type="button" data-view="${esc(item.target || "journey")}" title="${esc(item.title || item.label || "")}">
+        ${esc(item.label || item.title || "")}
+      </button>
+    `).join("");
   }
 
   function applyHero(state) {
@@ -67,21 +81,23 @@
     const featured = $("#heroFeatured");
     if (!hero) return;
     const config = state.data.site.hero || {};
+    const publicJourneys = state.data.journeys.filter((city) => city.status !== "asset");
     const asset = state.data.journeys.find((city) => city.id === config.backgroundAssetId);
-    const image = asset?.coverImage || config.backgroundImage || "";
-    hero.dataset.heroMode = config.mode || "art";
+    const latestCover = [...publicJourneys].reverse().find((city) => city.coverImage || city.cardImage);
+    const image = asset?.coverImage || config.backgroundImage || latestCover?.coverImage || latestCover?.cardImage || "";
+    hero.dataset.heroMode = image ? "image" : (config.mode === "art" ? "linear" : (config.mode || "linear"));
     hero.dataset.heroAlign = config.align || "left";
     hero.style.setProperty("--hero-height", `${Number(config.height || 88)}vh`);
     hero.style.setProperty("--hero-color", config.color || "#f7f3eb");
     hero.style.setProperty("--hero-gradient", config.gradient || "none");
     hero.style.setProperty("--hero-image", image ? `url("${String(image).replace(/"/g, "%22")}")` : "none");
+    hero.style.setProperty("--hero-focus", config.focus || "center");
     hero.style.setProperty("--hero-overlay", Number(config.overlay ?? .12));
     hero.style.setProperty("--hero-blur", `${Number(config.blur || 0)}px`);
     hero.style.setProperty("--hero-glow", Number(config.glow ?? .22));
     hero.classList.toggle("hero-noise", config.noise !== false);
     hero.classList.toggle("hero-grain", config.grain !== false);
     if (!featured) return;
-    const publicJourneys = state.data.journeys.filter((city) => city.status !== "asset");
     let selected = null;
     if (config.featuredMode === "manual") selected = publicJourneys.find((city) => city.id === config.featuredJourney || city.slug === config.featuredJourney);
     if (config.featuredMode === "random" && publicJourneys.length) selected = publicJourneys[Math.floor(Math.random() * publicJourneys.length)];

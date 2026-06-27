@@ -128,27 +128,48 @@
     });
   }
 
+  async function parsePagesJson(response, label) {
+    if (!response?.ok) {
+      const error = new Error(`${label} Pages data is not ready`);
+      error.code = "PAGES_NOT_READY";
+      throw error;
+    }
+    const contentType = response.headers.get("content-type") || "";
+    const text = await response.text();
+    const trimmed = text.trim();
+    if (!trimmed || (!trimmed.startsWith("{") && !trimmed.startsWith("[")) || /<html|<!doctype/i.test(trimmed)) {
+      const error = new Error(`${label} Pages JSON is not ready`);
+      error.code = "PAGES_NOT_READY";
+      throw error;
+    }
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      const error = new Error(`${label} Pages JSON is not ready`);
+      error.code = "PAGES_NOT_READY";
+      throw error;
+    }
+  }
+
   async function fetchPagesArchive() {
     const bust = Date.now();
     const [journeysResponse, settingsResponse] = await Promise.all([
       fetch(`./content/journeys.json?deploy=${bust}`, { cache: "no-store" }),
       fetch(`./content/settings.json?deploy=${bust}`, { cache: "no-store" })
     ]);
-    if (!journeysResponse.ok || !settingsResponse.ok) throw new Error("Pages archive is not ready");
-    const journeys = await journeysResponse.json();
-    const settings = await settingsResponse.json();
+    const journeys = await parsePagesJson(journeysResponse, "journeys.json");
+    const settings = await parsePagesJson(settingsResponse, "settings.json");
     return { journeys, site: settings.site, settings: settings.settings };
   }
 
   async function waitForPages(expectedArchive) {
     const expected = archiveFingerprint(expectedArchive);
-    const deadline = Date.now() + 90000;
-    while (Date.now() < deadline) {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
       try {
         const live = await fetchPagesArchive();
         if (archiveFingerprint(live) === expected) return true;
       } catch {}
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     }
     return false;
   }
@@ -235,7 +256,12 @@
       currentStage = "等待 GitHub Pages 更新";
       const pagesReady = await waitForPages(syncedArchive);
       if (pagesReady) {
-        const liveArchive = await fetchPagesArchive();
+        let liveArchive = syncedArchive;
+        try {
+          liveArchive = await fetchPagesArchive();
+        } catch {
+          liveArchive = syncedArchive;
+        }
         window.ArchiveApp.state.data = window.ArchiveStore.normalize(liveArchive);
         window.ArchiveStore.save(window.ArchiveApp.state.data, true);
         window.ArchiveRender.renderApp(window.ArchiveApp.state);
@@ -244,7 +270,7 @@
         window.ArchiveManager?.completeOperation("发布完成");
         toast(`发布成功：${result.commit.slice(0, 7)}${result.uploads ? `，图片 ${result.uploads} 张` : ""}`);
       } else {
-        window.ArchiveManager?.completeOperation("Commit 成功，Pages 仍在部署");
+        window.ArchiveManager?.completeOperation("已提交成功，正在等待线上数据同步");
         toast(`Commit ${result.commit.slice(0, 7)} 已完成，GitHub Pages 仍在部署`);
       }
     } catch (error) {
@@ -315,6 +341,11 @@
 
   function bind() {
     $("#adminEntry")?.addEventListener("click", openDialog);
+    $("#bottomAdminEntry")?.addEventListener("click", openDialog);
+    $("#uploadProgressClose")?.addEventListener("click", () => {
+      const panel = $("#uploadProgress");
+      if (panel) panel.hidden = true;
+    });
     $("#adminConnect")?.addEventListener("click", async () => {
       const url = $("#workerUrl").value.trim();
       const key = $("#adminKey").value.trim();

@@ -24,6 +24,7 @@
       <button id="adminEntry" class="pill admin-access" type="button">进入后台</button>
       <span class="pill admin-status" id="adminStatus">后台已连接</span>
       <button class="pill admin-only" id="adminLogout" type="button">退出管理</button>
+      <nav id="publicNav" class="public-nav" aria-label="内容频道"></nav>
       <input id="importInput" class="sr-file" type="file" accept="application/json">
     </div>
   </header>
@@ -96,6 +97,8 @@
   <footer class="footer">多美 © 2026</footer>
 
   <div class="float-panel">
+    <button type="button" data-action="focus-search">鎼滅储</button>
+    <button type="button" id="bottomAdminEntry">杩涘叆鍚庡彴</button>
     <button type="button" data-action="top">顶部</button>
     <button type="button" data-action="random">随机</button>
     <button type="button" data-action="next">下一篇</button>
@@ -113,6 +116,7 @@
   </nav>
   <aside id="uploadProgress" class="upload-progress" aria-live="polite" hidden>
     <header><strong id="uploadProgressTitle">处理图片</strong><span id="uploadProgressCount">0/0</span></header>
+    <button id="uploadProgressClose" class="upload-progress-close" type="button" aria-label="关闭">×</button>
     <div class="progress-track"><span id="uploadProgressBar"></span></div>
     <div id="uploadProgressItems" class="upload-progress-items"></div>
   </aside>

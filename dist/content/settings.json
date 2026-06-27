@@ -7,8 +7,8 @@
     "homeSections": [
       {
         "id": "home-1782558585818-74jmo1td",
-        "eyebrow": "Travel Archive&nbsp;",
-        "title": "像翻开一本安静的旅行记录册&nbsp;",
+        "eyebrow": "Travel Archive",
+        "title": "像翻开一本安静的旅行记录册",
         "subtitle": "从一个地方，慢慢走到下一个地方。",
         "body": "试试",
         "buttonLabel": "111",
@@ -54,6 +54,12 @@
     }
   },
   "settings": {
+    "navItems": [
+      { "key": "travel", "label": "游", "title": "旅行", "visible": true, "order": 1, "target": "journey", "type": "travel" },
+      { "key": "photo", "label": "景", "title": "摄影", "visible": true, "order": 2, "target": "gallery", "type": "photo" },
+      { "key": "thought", "label": "想", "title": "灵感", "visible": true, "order": 3, "target": "thought", "type": "thought" },
+      { "key": "essay", "label": "文", "title": "文章", "visible": true, "order": 4, "target": "essay", "type": "essay" }
+    ],
     "analytics": {
       "cloudflare": "",
       "firebase": "",

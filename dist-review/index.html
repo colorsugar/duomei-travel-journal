@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>多美 | Travel Journal</title>
+  <link rel="stylesheet" href="./css/archive.css?v=20260627-v5-1">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="reading-progress" aria-hidden="true"><span></span></div>
+
+  <header class="topbar">
+    <button class="brand" type="button" data-action="home">多美</button>
+    <div class="topbar-actions">
+      <button class="pill" type="button" data-view="journey">旅程</button>
+      <button class="pill" type="button" data-view="tags">标签</button>
+      <button class="pill" type="button" data-view="stats">统计</button>
+      <button class="pill edit-only admin-only" type="button" data-action="export">导出 JSON</button>
+      <button class="pill edit-only admin-only" type="button" data-action="import">导入 JSON</button>
+      <button class="pill edit-only admin-only" type="button" data-action="undo">撤销</button>
+      <button class="pill admin-only admin-mode-indicator" id="adminDashboard" type="button">返回后台</button>
+      <button id="adminEntry" class="pill admin-access" type="button">进入后台</button>
+      <span class="pill admin-status" id="adminStatus">后台已连接</span>
+      <button class="pill admin-only" id="adminLogout" type="button">退出管理</button>
+      <input id="importInput" class="sr-file" type="file" accept="application/json">
+    </div>
+  </header>
+
+  <main>
+    <section id="homeView" class="view active">
+      <section class="hero">
+        <div class="hero-art" aria-hidden="true">
+          <span class="cloud c1"></span>
+          <span class="cloud c2"></span>
+          <span class="cloud c3"></span>
+          <span class="wind w1"></span>
+          <span class="wind w2"></span>
+          <span class="wind w3"></span>
+          <span class="plane">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <path d="M7 33 57 9 42 56 31 39 17 47 24 35z"></path>
+              <path d="M31 39 57 9"></path>
+            </svg>
+          </span>
+        </div>
+        <div class="hero-copy reveal">
+          <h1 class="site-title editable" data-bind="site.title">多美</h1>
+          <p class="site-subtitle editable" data-bind="site.subtitle">Travel Journal</p>
+          <p class="site-poem editable" data-bind="site.poem">记录一路看到的风景，<br>也记录一路走过的生活。</p>
+        </div>
+        <aside id="heroFeatured" class="hero-featured"></aside>
+      </section>
+
+      <section id="homeSections" class="home-sections"></section>
+
+      <section class="journey-section">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker editable" data-bind="site.journeyEyebrow">Journey</p>
+            <h2 class="editable" data-bind="site.journeyTitle">慢慢翻阅</h2>
+            <p class="section-description editable" data-bind="site.journeyDescription">从一个地方，慢慢走到下一个地方。</p>
+          </div>
+          <label class="search-wrap">
+            <input id="searchInput" type="search" placeholder="搜索城市、正文、Tag、年份">
+          </label>
+        </div>
+        <div id="searchResults" class="search-results" aria-live="polite"></div>
+        <div id="journeyGrid" class="journey-grid"></div>
+      </section>
+    </section>
+
+    <section id="detailView" class="view"></section>
+
+    <section id="tagsView" class="view page-pad">
+      <div class="page-title reveal">
+        <p class="section-kicker">Tags</p>
+        <h1>漂浮的记忆</h1>
+        <p>Tag 会随着出现次数变大，并在页面里缓慢移动。点击一个 Tag，就能翻到相关旅程。</p>
+      </div>
+      <div id="tagCloud" class="tag-cloud"></div>
+      <div id="tagResults" class="tag-results"></div>
+    </section>
+
+    <section id="statsView" class="view page-pad">
+      <div class="page-title reveal">
+        <p class="section-kicker">Archive</p>
+        <h1>旅行统计</h1>
+        <p>这里会随着城市、照片、Tag 和浏览量自动成长。</p>
+      </div>
+      <div id="statsGrid" class="stats-grid"></div>
+    </section>
+  </main>
+
+  <footer class="footer">多美 © 2026</footer>
+
+  <div class="float-panel">
+    <button type="button" data-action="top">顶部</button>
+    <button type="button" data-action="random">随机</button>
+    <button type="button" data-action="next">下一篇</button>
+  </div>
+
+  <button id="quickAddCity" class="quick-add edit-only admin-only" type="button" data-action="add-city">＋ 添加城市</button>
+  <button id="editToggle" class="edit-toggle admin-only" type="button" aria-pressed="false">编辑模式</button>
+  <button id="adminPublish" class="publish-toggle edit-only admin-only" type="button">发布</button>
+  <nav id="editActionBar" class="edit-action-bar edit-only admin-only" aria-label="编辑操作">
+    <button type="button" data-editor-action="save">保存</button>
+    <button type="button" data-editor-action="cancel">取消</button>
+    <button type="button" data-editor-action="back">返回</button>
+    <button type="button" data-action="undo">撤销</button>
+    <button type="button" data-editor-action="defaults">恢复默认</button>
+  </nav>
+  <aside id="uploadProgress" class="upload-progress" aria-live="polite" hidden>
+    <header><strong id="uploadProgressTitle">处理图片</strong><span id="uploadProgressCount">0/0</span></header>
+    <div class="progress-track"><span id="uploadProgressBar"></span></div>
+    <div id="uploadProgressItems" class="upload-progress-items"></div>
+  </aside>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="textToolbar" class="text-toolbar edit-only admin-only" aria-label="文字样式">
+    <select data-style="font" title="字体">
+      <option value="">默认无衬线</option>
+      <option value="'SimSun', 'Songti SC', serif">宋体风</option>
+      <option value="'Hiragino Mincho ProN', 'Yu Mincho', serif">明朝体 / serif</option>
+      <option value="'Comic Sans MS', 'Arial Rounded MT Bold', 'Yu Gothic', sans-serif">圆体风</option>
+    </select>
+    <input data-style="size" type="number" min="12" max="120" value="18" title="字号">
+    <input data-style="color" type="color" value="#3d3a34" title="颜色">
+    <select data-style="weight" title="粗细">
+      <option value="300">细</option>
+      <option value="400">常规</option>
+      <option value="600">半粗</option>
+      <option value="700">粗</option>
+    </select>
+    <select data-style="align" title="对齐">
+      <option value="left">左对齐</option>
+      <option value="center">居中</option>
+      <option value="right">右对齐</option>
+    </select>
+    <input data-style="lineHeight" type="number" min="1" max="3" step=".1" value="1.8" title="行距">
+  </div>
+
+  <dialog id="adminDialog" class="dialog">
+    <form method="dialog" class="dialog-card">
+      <header class="dialog-head">
+        <h2>管理员</h2>
+        <button id="adminClose" class="dialog-close" value="cancel" aria-label="关闭">×</button>
+      </header>
+      <p class="admin-note">GitHub Token 不会进入网页。请填写 Cloudflare Worker 地址和管理员密钥；管理员密钥只保存在当前浏览器会话。</p>
+      <label class="admin-field">Worker 地址<input id="workerUrl" placeholder="https://duomei-travel-journal-admin.your-name.workers.dev"></label>
+      <label class="admin-field">管理员密钥<input id="adminKey" type="password" autocomplete="current-password" placeholder="ADMIN_KEY"></label>
+      <div class="dialog-actions">
+        <button id="adminRestoreDraft" class="pill" type="button">恢复草稿</button>
+        <button id="adminEdit" class="pill" type="button">进入编辑</button>
+        <button id="adminConnect" class="pill primary" type="button">连接后台</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dashboardDialog" class="dialog dashboard-dialog">
+    <div class="studio-shell">
+      <aside id="studioSidebar" class="studio-sidebar">
+        <header class="studio-brand">
+          <span class="studio-mark">D</span>
+          <div><strong>Duomei</strong><small>Travel Studio</small></div>
+        </header>
+        <nav class="studio-nav" aria-label="Studio navigation">
+          <button class="active" type="button" data-studio-view="studio" data-icon="house"><span>工作室</span></button>
+          <button type="button" data-studio-view="journey" data-icon="compass"><span>旅程</span></button>
+          <button type="button" data-studio-view="media" data-icon="image"><span>媒体</span></button>
+          <button type="button" data-studio-view="home" data-icon="layout"><span>首页</span></button>
+          <button type="button" data-studio-view="repository" data-icon="archive"><span>存储库</span></button>
+          <button type="button" data-studio-view="health" data-icon="activity"><span>健康状态</span></button>
+          <button type="button" data-studio-view="recovery" data-icon="history"><span>恢复</span></button>
+          <button type="button" data-studio-view="settings" data-icon="settings"><span>设置</span></button>
+        </nav>
+        <footer>
+          <button id="studioCollapse" type="button" data-icon="panel-left"><span>收起导航</span></button>
+        </footer>
+      </aside>
+      <section class="studio-workspace">
+        <header class="studio-toolbar">
+          <button id="studioMenu" class="studio-menu" type="button" data-icon="menu" aria-label="打开导航"></button>
+          <div><span id="studioBreadcrumb">Duomei Studio</span><strong id="studioViewTitle">Studio</strong></div>
+          <div class="studio-toolbar-actions">
+            <span class="studio-sync"><i></i> 已连接</span>
+            <button id="studioViewSite" class="studio-command" type="button">浏览网站</button>
+            <button id="studioToggleEditor" class="studio-command primary" type="button">进入编辑</button>
+            <button id="dashboardClose" class="dialog-close" type="button" data-icon="x" aria-label="关闭"></button>
+          </div>
+        </header>
+        <main class="studio-scroll">
+          <section id="studioHome" class="studio-home">
+            <header class="welcome-studio">
+              <p id="studioGreeting">欢迎回来，多美。</p>
+              <h2 id="studioWelcomeLine">今天也继续记录旅程吧。</h2>
+              <div class="welcome-meta">
+                <span><strong id="daysSincePublish">--</strong> 首次发布至今天数</span>
+                <span><strong id="welcomeJourneys">--</strong> Journey</span>
+                <span><strong id="welcomePhotos">--</strong> 照片</span>
+              </div>
+            </header>
+            <div class="dashboard-overview">
+              <section class="health-card dashboard-tile">
+                <div id="healthRing" class="health-ring"><div><strong id="healthScore">--</strong><small>/ 100</small></div></div>
+                <div><span>健康评分</span><h3 id="healthLabel">正在检查</h3><p id="healthAdvice">正在读取档案状态</p></div>
+              </section>
+              <section class="storage-card dashboard-tile">
+                <header><div><span>Repository</span><h3 id="repositoryUsage">正在估算</h3></div><strong id="repositoryPercent">0%</strong></header>
+                <div class="storage-gauge"><span id="repositoryGauge"></span></div>
+                <footer><span>建议图片 300KB–800KB</span><strong id="estimatedPhotos">--</strong></footer>
+              </section>
+            </div>
+            <section class="studio-assistant">
+              <span>Studio Assistant</span>
+              <h3 id="studioAssistantTitle">你的作品档案状态良好。</h3>
+              <div id="studioAssistantList"></div>
+            </section>
+            <div class="dashboard-metrics">
+              <section><span>Journey</span><strong id="dashboardJourneys">0</strong><small>旅行档案</small></section>
+              <section><span>图片</span><strong id="dashboardPhotos">0</strong><small id="dashboardAverage">平均 --</small></section>
+              <section><span>未发布图片</span><strong id="dashboardPending">0</strong><small>等待同步 GitHub</small></section>
+              <section><span>本地 JSON</span><strong id="dashboardJson">--</strong><small>localStorage</small></section>
+              <section><span>IndexedDB</span><strong id="dashboardIndexedDb">检查中</strong><small>恢复备份</small></section>
+              <section><span>最近备份</span><strong id="dashboardBackup">--</strong><small id="dashboardDraft">草稿：无</small></section>
+              <section><span>图片范围</span><strong id="dashboardRange">--</strong><small>最大 / 最小</small></section>
+              <section><span>最近发布</span><strong id="dashboardPublish">--</strong><small id="dashboardCommit">等待记录</small></section>
+            </div>
+            <section class="studio-publish-card">
+              <div><span>发布状态</span><h3 id="studioPublishTitle">作品已与 GitHub 同步</h3><p id="studioPublishText">只有进入编辑模式并点击发布，线上网站才会更新。</p></div>
+              <button class="dashboard-action primary" id="studioPublishNow" type="button" data-icon="upload" hidden><strong>立即发布</strong><span>同步图片、JSON 与 GitHub Pages</span></button>
+              <button class="dashboard-action primary" id="dashboardContinue" type="button" data-icon="pencil"><strong>继续编辑</strong><span>进入安全编辑模式</span></button>
+            </section>
+          </section>
+          <section id="adminPanel" class="admin-panel" hidden></section>
+        </main>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="cityDialog" class="dialog">
+    <form method="dialog" class="dialog-card">
+      <header class="dialog-head">
+        <h2 id="cityDialogTitle">新增城市</h2>
+        <button class="dialog-close" value="cancel" aria-label="关闭">×</button>
+      </header>
+      <div class="form-grid">
+        <label>城市名称<input id="cityTitle" required></label>
+        <label>英文 slug<input id="citySlug" placeholder="hokkaido"></label>
+        <label>日期<input id="cityPublished" placeholder="2026.06"></label>
+        <label>地点<input id="cityPlace" placeholder="eg. Osaka, Japan"></label>
+        <label>分类<input id="cityCategory" placeholder="eg. Travel"></label>
+        <label>照片布局<select id="cityGalleryLayout"><option value="auto">自动布局</option><option value="masonry">瀑布流</option><option value="justified">两端对齐</option><option value="fixed">固定网格</option></select></label>
+        <label class="wide">Tag
+          <div class="tag-editor">
+            <div id="cityTagChips" class="tag-chip-list"></div>
+            <input id="cityTagInput" placeholder="输入后按 Enter 添加标签" autocomplete="off">
+            <div id="cityTagSuggestions" class="tag-suggestions"></div>
+            <input id="cityTags" type="hidden">
+          </div>
+        </label>
+        <label class="wide">简介<textarea id="cityExcerpt" rows="3"></textarea></label>
+        <label class="wide">正文<textarea id="cityBody" rows="6"></textarea></label>
+        <label>上传封面<input id="cityCover" type="file" accept="image/*"></label>
+        <label>添加 Gallery<input id="cityGallery" type="file" accept="image/*" multiple></label>
+      </div>
+      <footer class="dialog-actions">
+        <button class="pill" value="cancel">取消</button>
+        <button class="pill primary" value="default" data-action="save-city">保存</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="cropDialog" class="dialog crop-dialog">
+    <form method="dialog" class="dialog-card">
+      <header class="dialog-head">
+        <h2>裁剪照片</h2>
+        <span id="cropZoomText">100%</span>
+      </header>
+      <div id="cropStage" class="crop-stage">
+        <img id="cropImage" alt="">
+        <div class="crop-frame" aria-label="裁剪范围">
+          <i data-crop-handle="nw"></i><i data-crop-handle="n"></i><i data-crop-handle="ne"></i>
+          <i data-crop-handle="e"></i><i data-crop-handle="se"></i><i data-crop-handle="s"></i>
+          <i data-crop-handle="sw"></i><i data-crop-handle="w"></i>
+        </div>
+      </div>
+      <input id="cropZoom" class="crop-range" type="range" min="1" max="3" step=".01" value="1">
+      <label class="crop-aspect-label">裁剪比例
+        <select id="cropAspect">
+          <option value="original">原始比例</option>
+          <option value="1">1:1</option>
+          <option value="1.333333">4:3</option>
+          <option value="1.5">3:2</option>
+          <option value="1.777778">16:9</option>
+          <option value=".5625">9:16</option>
+          <option value="2.333333">21:9</option>
+          <option value="free">自由裁剪</option>
+        </select>
+      </label>
+      <footer class="dialog-actions">
+        <button class="pill" value="cancel" data-action="crop-cancel">取消</button>
+        <button class="pill" type="button" data-action="crop-rotate">旋转 90°</button>
+        <button class="pill" type="button" data-action="crop-reset">重置</button>
+        <button class="pill primary" type="button" data-action="crop-save">保存图片</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div id="lightbox" class="lightbox" aria-hidden="true">
+    <button type="button" class="lightbox-back" data-action="lightbox-close">‹ 返回当前旅程</button>
+    <button type="button" class="lightbox-close" data-action="lightbox-close" aria-label="关闭">×</button>
+    <button type="button" class="lightbox-nav prev" data-action="lightbox-prev">‹</button>
+    <div class="lightbox-stage">
+      <div id="lightboxSkeleton" class="lightbox-skeleton" aria-hidden="true"></div>
+      <img id="lightboxImage" alt="">
+      <p id="lightboxError" class="lightbox-error" hidden>这张照片暂时无法显示。返回 Journey 后可以重新上传。</p>
+    </div>
+    <button type="button" class="lightbox-nav next" data-action="lightbox-next">›</button>
+    <span id="lightboxCounter" class="lightbox-counter"></span>
+    <p id="lightboxCaption"></p>
+  </div>
+
+  <script src="./js/data.js?v=20260627-v5-1"></script>
+  <script src="./js/store.js?v=20260627-v5-1"></script>
+  <script src="./js/image.js?v=20260627-v5-1"></script>
+  <script src="./js/render.js?v=20260627-v5-1"></script>
+  <script src="./js/editor.js?v=20260627-v5-1"></script>
+  <script src="./js/interactions.js?v=20260627-v5-1"></script>
+  <script src="./js/cms-client.js?v=20260627-v5-1"></script>
+  <script src="./js/manager.js?v=20260627-v5-1"></script>
+  <script src="./js/admin.js?v=20260627-v5-1"></script>
+  <script src="./js/app.js?v=20260627-v5-1"></script>
+</body>
+</html>

@@ -514,6 +514,7 @@
 
   function operationProgress(stages, activeIndex, title = "正在处理") {
     const panel = document.getElementById("uploadProgress");
+    clearTimeout(panel.hideTimer);
     panel.hidden = false;
     panel.classList.remove("is-complete", "is-failed");
     document.getElementById("uploadProgressTitle").textContent = title;
@@ -531,7 +532,8 @@
     document.getElementById("uploadProgressTitle").textContent = title;
     document.getElementById("uploadProgressBar").style.width = "100%";
     panel.classList.add("is-complete");
-    window.setTimeout(() => { panel.hidden = true; }, 3500);
+    clearTimeout(panel.hideTimer);
+    panel.hideTimer = window.setTimeout(() => { panel.hidden = true; }, 3500);
   }
 
   function failOperation(message) {
@@ -539,6 +541,22 @@
     document.getElementById("uploadProgressTitle").textContent = "操作失败";
     const items = document.getElementById("uploadProgressItems");
     items.insertAdjacentHTML("beforeend", `<div data-status="failed"><strong>失败原因</strong><span>${String(message || "未知错误").replace(/[<>&]/g, "")}</span></div>`);
+  }
+
+  function failOperationGlass(message) {
+    const panel = document.getElementById("uploadProgress");
+    panel.hidden = false;
+    panel.classList.add("is-failed");
+    document.getElementById("uploadProgressTitle").textContent = "操作失败";
+    const items = document.getElementById("uploadProgressItems");
+    items.insertAdjacentHTML("beforeend", `<div data-status="failed"><strong>失败原因</strong><span>${String(message || "未知错误").replace(/[<>&]/g, "")}</span></div>`);
+    clearTimeout(panel.hideTimer);
+    const hide = () => { if (!panel.matches(":hover")) panel.hidden = true; };
+    panel.hideTimer = window.setTimeout(hide, 12000);
+    panel.addEventListener("mouseleave", () => {
+      clearTimeout(panel.hideTimer);
+      panel.hideTimer = window.setTimeout(hide, 1200);
+    }, { once: true });
   }
 
   function bind() {
@@ -721,5 +739,5 @@
     });
   }
 
-  window.ArchiveManager = { bind, openDashboard, refreshDashboard, afterPublish, backup, scheduleRecovery, cancelScheduledRecovery, metrics, sizeLabel, operationProgress, completeOperation, failOperation };
+  window.ArchiveManager = { bind, openDashboard, refreshDashboard, afterPublish, backup, scheduleRecovery, cancelScheduledRecovery, metrics, sizeLabel, operationProgress, completeOperation, failOperation: failOperationGlass };
 })();

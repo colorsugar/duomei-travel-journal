@@ -73,6 +73,14 @@
       if (view.dataset.view === "journey") showHome();
       if (view.dataset.view === "tags") showTags();
       if (view.dataset.view === "stats") showStats();
+      if (view.dataset.view === "gallery" || view.dataset.view === "photo") {
+        showHome();
+        setTimeout(() => document.getElementById("journeyGrid")?.scrollIntoView({ behavior: "smooth", block: "start" }), 180);
+      }
+      if (view.dataset.view === "thought" || view.dataset.view === "essay") {
+        showHome();
+        setTimeout(() => document.getElementById("homeSections")?.scrollIntoView({ behavior: "smooth", block: "start" }), 180);
+      }
     });
   }
 

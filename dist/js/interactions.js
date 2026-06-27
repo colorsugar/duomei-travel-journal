@@ -88,6 +88,49 @@
     window.ArchiveRender.renderJourney(stateRef, list);
   }
 
+  function searchableText(city) {
+    return [
+      city.title,
+      city.place,
+      city.country,
+      city.city,
+      city.published,
+      String(city.published || "").match(/\d{4}/)?.[0],
+      city.category,
+      city.excerpt,
+      city.bodyTop,
+      city.bodyBottom,
+      ...(city.tags || []),
+      ...(city.gallery || []).flatMap((photo) => [photo.title, photo.caption, photo.place, photo.takenAt, photo.camera, photo.notes])
+    ].filter(Boolean).join(" ").toLowerCase();
+  }
+
+  function searchStable(value) {
+    const box = $("#searchResults");
+    if (!box || !stateRef) return;
+    const q = String(value || "").trim().toLowerCase();
+    if (!q) {
+      box.innerHTML = "";
+      window.ArchiveRender.renderJourney(stateRef, stateRef.data.journeys);
+      return;
+    }
+    const list = stateRef.data.journeys
+      .filter((city) => city.status !== "asset")
+      .filter((city) => searchableText(city).includes(q) || fuzzy(String(city.title || "").toLowerCase(), q));
+    box.innerHTML = list.length
+      ? `找到 ${list.length} 个旅程`
+      : `<div class="empty-search"><strong>没有找到相关内容</strong><button type="button" data-action="clear-search">清空搜索</button></div>`;
+    window.ArchiveRender.renderJourney(stateRef, list);
+  }
+
+  const debouncedSearch = (() => {
+    let timer = 0;
+    return (value) => {
+      clearTimeout(timer);
+      timer = window.setTimeout(() => searchStable(value), 300);
+    };
+  })();
+
   function openLightbox(cityId, photoId) {
     const city = stateRef.data.journeys.find((item) => item.id === cityId || item.slug === cityId);
     if (!city) {
@@ -259,8 +302,23 @@
   }
 
   function bindFilters() {
-    $("#searchInput")?.addEventListener("input", (event) => search(event.target.value));
+    $("#searchInput")?.addEventListener("input", (event) => debouncedSearch(event.target.value));
     document.addEventListener("click", (event) => {
+      if (event.target.closest("[data-action='focus-search']")) {
+        const input = $("#searchInput");
+        if (input) {
+          window.ArchiveApp?.showHome();
+          setTimeout(() => {
+            input.scrollIntoView({ behavior: "smooth", block: "center" });
+            input.focus();
+          }, 150);
+        }
+      }
+      if (event.target.closest("[data-action='clear-search']")) {
+        const input = $("#searchInput");
+        if (input) input.value = "";
+        searchStable("");
+      }
       const tag = event.target.closest("[data-filter-tag]");
       if (tag) filterTag(tag.dataset.filterTag);
     });
