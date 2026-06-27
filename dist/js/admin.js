@@ -10,6 +10,14 @@
     window.ArchiveUI?.toast(message);
   }
 
+  function friendlyError(error) {
+    const text = String(error?.message || error || "");
+    if (/unexpected end of json input/i.test(text)) return "线上数据暂时未同步完成，请稍后刷新或重试。";
+    if (/failed to fetch|networkerror|load failed/i.test(text)) return "无法连接发布服务，请检查网络后重试。";
+    if (/worker|cloudflare/i.test(text)) return "无法连接 Cloudflare Worker，请稍后重试。";
+    return text || "操作失败，请稍后重试。";
+  }
+
   function setAdminStatus(text) {
     const status = $("#adminStatus");
     if (status) status.textContent = text;
@@ -37,6 +45,7 @@
     setAdminStatus(`后台已连接${health.actor ? ` · ${health.actor}` : ""}`);
     toast("管理员已登录");
     closeDialog();
+    await reconcileRemoteAfterLogin();
     window.ArchiveRender?.renderApp(window.ArchiveApp.state);
     window.ArchiveManager?.openDashboard();
     return health;
@@ -77,7 +86,7 @@
   }
 
   function publishFailure(error, stage) {
-    const reason = error?.message || "未知错误";
+    const reason = friendlyError(error);
     const suggestions = {
       NETWORK: "检查网络和 Worker 地址，然后点击“重试发布”。iPhone Safari 可切换一次网络后重试。",
       TIMEOUT: "先查看 GitHub 是否已经生成 Commit；若没有，可安全重试。",
@@ -105,6 +114,35 @@
       $("#retryPublish")?.addEventListener("click", () => publish(lastPublishMessage, true).catch(() => {}), { once: true });
     }
     toast(`发布失败：${reason}`);
+  }
+
+  async function reconcileRemoteAfterLogin() {
+    try {
+      const response = await window.ArchiveCMS.api("/api/archive", { timeoutMs: 30000 });
+      const remote = window.ArchiveStore.normalize({
+        site: response.settings?.site || {},
+        settings: response.settings?.settings || {},
+        journeys: response.journeys || []
+      });
+      const current = window.ArchiveStore.normalize(window.ArchiveApp.state.data);
+      const remoteMatches = archiveFingerprint(remote) === archiveFingerprint(current);
+      const localLooksClean = !window.ArchiveApp.state.hasUnpublishedChanges && !hasEmbeddedImages(current);
+      if (remoteMatches || localLooksClean) {
+        window.ArchiveApp.state.data = remote;
+        window.ArchiveApp.state.hasUnpublishedChanges = false;
+        window.ArchiveCMS.clearDraft();
+        window.ArchiveStore.save(remote, true);
+        localStorage.setItem("duomei_publish_state", JSON.stringify({
+          state: "published",
+          savedAt: new Date().toISOString(),
+          commit: ""
+        }));
+        window.ArchiveManager?.clearOperationFailure?.();
+        $("#toast")?.classList.remove("show");
+      }
+    } catch (error) {
+      window.ArchiveUI?.notify?.(String(error?.message || error), "error", "后台同步检查");
+    }
   }
 
   function archiveFingerprint(archive) {
@@ -358,14 +396,17 @@
   }
 
   function bind() {
-    $("#adminEntry")?.addEventListener("click", openDialog);
-    $("#bottomAdminEntry")?.addEventListener("click", openDialog);
+    $("#adminEntry")?.addEventListener("click", () => {
+      if (document.body.classList.contains("admin-authenticated")) window.ArchiveManager?.openDashboard();
+      else openDialog();
+    });
     $("#uploadProgressClose")?.addEventListener("click", () => {
       const panel = $("#uploadProgress");
+      window.ArchiveManager?.clearOperationFailure?.();
       if (panel) panel.hidden = true;
     });
     $("#adminConnect")?.addEventListener("click", async () => {
-      const url = $("#workerUrl").value.trim();
+      const url = $("#workerUrl").value.trim() || window.ArchiveCMS.workerUrl();
       const key = $("#adminKey").value.trim();
       if (!url) {
         toast("请填写 Worker 地址");
@@ -380,7 +421,7 @@
       try {
         await checkAdmin();
       } catch (error) {
-        toast(error.message || "连接后台失败");
+        toast(friendlyError(error));
       }
     });
     $("#adminEdit")?.addEventListener("click", enableEdit);

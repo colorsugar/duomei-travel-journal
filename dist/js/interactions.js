@@ -27,15 +27,28 @@
     notifications.unshift({ message: String(message || ""), type, title, time: Date.now() });
     notifications.splice(30);
     renderNotifications();
+    const badge = $("#notificationBadge");
+    if (badge) {
+      badge.hidden = notifications.length === 0;
+      badge.textContent = String(Math.min(99, notifications.length));
+    }
+  }
+
+  function friendlyMessage(message) {
+    const text = String(message || "");
+    if (/unexpected end of json input/i.test(text)) return "线上数据暂时未同步完成，请稍后刷新或重试。";
+    if (/failed to fetch|networkerror|load failed/i.test(text)) return "无法连接发布服务，请检查网络后重试。";
+    if (/worker connection|cloudflare worker/i.test(text)) return "无法连接 Cloudflare Worker，请稍后重试。";
+    return text;
   }
 
   function toast(message, type = "normal") {
     const el = $("#toast");
     if (!el) return;
-    const text = String(message || "");
+    const text = friendlyMessage(message);
     const inferred = /失败|错误|无法|error|failed/i.test(text) ? "error" : type;
-    notify(text, inferred, inferred === "error" ? "需要处理" : "通知");
-    el.textContent = message;
+    notify(String(message || ""), inferred, inferred === "error" ? "需要处理" : "通知");
+    el.textContent = text;
     el.dataset.type = inferred;
     el.classList.add("show");
     clearTimeout(toast.timer);
@@ -136,16 +149,19 @@
     const q = String(value || "").trim().toLowerCase();
     if (!q) {
       box.innerHTML = "";
+      document.body.classList.remove("search-mode");
       window.ArchiveRender.renderJourney(stateRef, stateRef.data.journeys);
       return;
     }
+    document.body.classList.add("search-mode");
     const list = stateRef.data.journeys
       .filter((city) => city.status !== "asset")
       .filter((city) => searchableText(city).includes(q) || fuzzy(String(city.title || "").toLowerCase(), q));
     box.innerHTML = list.length
-      ? `找到 ${list.length} 个旅程`
+      ? `<strong>找到 ${list.length} 个相关内容</strong>`
       : `<div class="empty-search"><strong>没有找到相关内容</strong><button type="button" data-action="clear-search">清空搜索</button></div>`;
     window.ArchiveRender.renderJourney(stateRef, list);
+    requestAnimationFrame(() => document.getElementById("journeyGrid")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
   const debouncedSearch = (() => {
@@ -342,11 +358,13 @@
       if (event.target.closest("[data-action='clear-search']")) {
         const input = $("#searchInput");
         if (input) input.value = "";
+        document.body.classList.remove("search-mode");
         searchStable("");
       }
       if (event.target.closest("[data-action='toggle-language']")) {
         const menu = $("#languageMenu");
         if (menu) menu.hidden = !menu.hidden;
+        event.stopPropagation();
       }
       const lang = event.target.closest("[data-language]");
       if (lang) {
@@ -355,10 +373,18 @@
         $("#languageMenu").hidden = true;
         window.ArchiveUI?.toast(`语言已切换：${lang.textContent.trim()}`);
       }
+      if (!event.target.closest(".language-switch")) {
+        const menu = $("#languageMenu");
+        if (menu) menu.hidden = true;
+      }
       if (event.target.closest("#toast")) {
         const center = $("#notificationCenter");
         if (center) center.hidden = false;
         $("#toast")?.classList.remove("show");
+      }
+      if (event.target.closest("#notificationBell")) {
+        const center = $("#notificationCenter");
+        if (center) center.hidden = false;
       }
       if (event.target.closest("#notificationClose")) {
         const center = $("#notificationCenter");

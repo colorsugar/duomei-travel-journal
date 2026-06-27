@@ -6,10 +6,29 @@
     editMode: false,
     currentSlug: "",
     activeEditable: null,
-    editingCityId: ""
+    editingCityId: "",
+    activeChannel: "travel"
   };
 
+  function setCreateContext(channel = "travel") {
+    state.activeChannel = channel;
+    const labels = {
+      travel: "＋ 新增旅程",
+      journey: "＋ 新增旅程",
+      gallery: "＋ 新增照片",
+      photo: "＋ 新增照片",
+      thought: "＋ 新增灵感",
+      essay: "＋ 新增文章"
+    };
+    const quick = document.getElementById("quickAddCity");
+    if (quick) {
+      quick.textContent = labels[channel] || labels.travel;
+      quick.dataset.channelCreate = channel;
+    }
+  }
+
   function showOnly(view) {
+    window.ArchiveManager?.clearOperationFailure?.();
     const views = {
       home: $("#homeView"),
       detail: $("#detailView"),
@@ -27,6 +46,7 @@
 
   function showHome() {
     state.currentSlug = "";
+    setCreateContext("travel");
     showOnly("home");
     window.ArchiveImage.applyTheme();
     window.ArchiveRender.renderApp(state);
@@ -36,6 +56,7 @@
   function openCity(slug) {
     const city = state.data.journeys.find((item) => item.slug === slug || item.id === slug);
     if (!city) return;
+    setCreateContext("travel");
     state.currentSlug = city.slug;
     showOnly("detail");
     window.ArchiveRender.renderDetail(state, city.slug, true);
@@ -61,17 +82,24 @@
 
   function showGallery() {
     state.currentSlug = "";
+    setCreateContext("gallery");
     showOnly("gallery");
     window.ArchiveImage.applyTheme();
     const root = document.getElementById("channelGalleryGrid");
     if (root) {
       const photos = state.data.journeys
         .filter((city) => city.status !== "asset")
-        .flatMap((city) => (city.gallery || []).filter((photo) => photo.src || photo.thumb || photo.image).map((photo) => ({ city, photo })));
+        .flatMap((city) => {
+          const cover = city.coverImage || city.coverThumb || city.cardImage || city.cardThumb
+            ? [{ city, photo: { id: `cover-${city.id}`, src: city.coverImage || city.cardImage, thumb: city.coverThumb || city.cardThumb, title: city.title, caption: city.place } }]
+            : [];
+          const gallery = (city.gallery || []).filter((photo) => photo.src || photo.thumb || photo.image).map((photo) => ({ city, photo }));
+          return [...cover, ...gallery];
+        });
       root.innerHTML = photos.length
         ? photos.map(({ city, photo }, index) => `
           <article class="gallery-item reveal">
-            <div class="photo" data-city="${city.id}" data-photo="${photo.id}">
+            <div class="photo" ${String(photo.id || "").startsWith("cover-") ? `data-open-city="${city.slug}"` : `data-city="${city.id}" data-photo="${photo.id}"`}>
               <img src="${photo.thumb || photo.src || photo.image}" alt="${photo.alt || photo.title || city.title}">
             </div>
             <div class="photo-copy"><h3>${photo.title || city.title}</h3><p>${photo.caption || city.place || ""}</p></div>
@@ -85,6 +113,7 @@
 
   function showChannel(name) {
     state.currentSlug = "";
+    setCreateContext(name);
     showOnly(name);
     window.ArchiveImage.applyTheme();
     window.scrollTo({ top: 0, behavior: "smooth" });

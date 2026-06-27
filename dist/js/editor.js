@@ -299,9 +299,39 @@
     target[last] = value;
   }
 
-  function fillCityDialog(state, city) {
+  function setFieldLabel(name, text, visible = true) {
+    const label = document.querySelector(`[data-field="${name}"]`);
+    if (!label) return;
+    label.hidden = !visible;
+    const input = label.querySelector("input, textarea, select");
+    label.childNodes[0].nodeValue = text;
+    if (input && !visible) input.value = "";
+  }
+
+  function applyDialogMode(mode = "travel", city) {
+    const modes = {
+      travel: { title: city ? "编辑旅程" : "新增旅程", titleLabel: "城市名称", body: "正文", excerpt: "简介", cover: "上传封面", gallery: "添加照片", showPlace: true, showCategory: true, showGallery: true },
+      gallery: { title: city ? "编辑照片" : "新增照片", titleLabel: "标题", body: "说明", excerpt: "说明摘要", cover: "上传照片", gallery: "添加更多照片", showPlace: true, showCategory: false, showGallery: true },
+      photo: { title: city ? "编辑照片" : "新增照片", titleLabel: "标题", body: "说明", excerpt: "说明摘要", cover: "上传照片", gallery: "添加更多照片", showPlace: true, showCategory: false, showGallery: true },
+      thought: { title: city ? "编辑灵感" : "新增灵感", titleLabel: "标题", body: "灵感内容", excerpt: "简短摘要", cover: "可选图片", gallery: "添加图片", showPlace: false, showCategory: false, showGallery: false },
+      essay: { title: city ? "编辑文章" : "新增文章", titleLabel: "标题", body: "正文", excerpt: "摘要", cover: "封面图", gallery: "添加配图", showPlace: false, showCategory: true, showGallery: false }
+    };
+    const config = modes[mode] || modes.travel;
+    state.editorMode = mode;
+    $("#cityDialogTitle").textContent = config.title;
+    setFieldLabel("title", config.titleLabel);
+    setFieldLabel("date", "日期");
+    setFieldLabel("place", "地点", config.showPlace);
+    setFieldLabel("category", "分类", config.showCategory);
+    setFieldLabel("excerpt", config.excerpt);
+    setFieldLabel("body", config.body);
+    setFieldLabel("cover", config.cover);
+    setFieldLabel("gallery", config.gallery, config.showGallery);
+  }
+
+  function fillCityDialog(state, city, mode = "travel") {
     state.editingCityId = city?.id || "";
-    $("#cityDialogTitle").textContent = city ? "编辑城市" : "新增城市";
+    applyDialogMode(mode, city);
     $("#cityTitle").value = city?.title || "";
     $("#citySlug").value = city?.slug || "";
     $("#cityPlace").value = city?.place || "";
@@ -317,8 +347,8 @@
     $("#cityGallery").value = "";
   }
 
-  function openCityEditor(state, city) {
-    fillCityDialog(state, city);
+  function openCityEditor(state, city, mode = state.activeChannel || "travel") {
+    fillCityDialog(state, city, mode);
     openDialog($("#cityDialog"));
   }
 
@@ -338,7 +368,8 @@
     city.place = formValue("cityPlace");
     city.published = formValue("cityPublished") || today();
     city.updated = today();
-    city.category = formValue("cityCategory");
+    city.category = formValue("cityCategory") || (state.editorMode === "essay" ? "文章" : state.editorMode === "gallery" || state.editorMode === "photo" ? "摄影" : state.editorMode === "thought" ? "灵感" : "Travel");
+    city.channelType = state.editorMode || "travel";
     city.galleryLayout = $("#cityGalleryLayout")?.value || "auto";
     city.excerpt = formValue("cityExcerpt");
     city.bodyTop = formValue("cityBody");
@@ -761,8 +792,12 @@
       const name = action.dataset.action;
 
       if (name === "home") window.ArchiveApp.showHome();
-      if (name === "add-city" && isEditing(state)) openCityEditor(state);
+      if (name === "add-city" && isEditing(state)) openCityEditor(state, null, action.dataset.channelCreate || state.activeChannel || "travel");
       if (name === "edit-city" && isEditing(state)) openCityEditor(state, cityById(state.data, action.dataset.id));
+      if (name === "cancel-city") {
+        event.preventDefault();
+        closeDialog($("#cityDialog"));
+      }
       if (name === "save-city") {
         event.preventDefault();
         await saveCityDialog(state);
