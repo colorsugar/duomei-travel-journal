@@ -93,8 +93,22 @@ async function readJsonFile(env, path, fallback) {
   if (response.status === 404) return fallback;
   if (!response.ok) throw new Error(`GitHub read failed: ${response.status}`);
   const payload = await response.json();
-  const text = atob(payload.content.replace(/\n/g, ""));
-  return JSON.parse(new TextDecoder().decode(Uint8Array.from(text, (char) => char.charCodeAt(0))));
+  let text = "";
+  if (payload.content && payload.encoding === "base64") {
+    text = new TextDecoder().decode(Uint8Array.from(atob(payload.content.replace(/\n/g, "")), (char) => char.charCodeAt(0)));
+  } else if (payload.download_url) {
+    const raw = await fetch(payload.download_url, { headers: { "cache-control": "no-cache" } });
+    if (!raw.ok) throw new Error(`GitHub raw read failed: ${raw.status}`);
+    text = await raw.text();
+  } else if (payload.sha) {
+    const blob = await github(env, `/git/blobs/${encodeURIComponent(payload.sha)}`);
+    if (!blob.ok) throw new Error(`GitHub blob read failed: ${blob.status}`);
+    const blobJson = await blob.json();
+    if (!blobJson.content || blobJson.encoding !== "base64") throw new Error("GitHub blob did not include readable content");
+    text = new TextDecoder().decode(Uint8Array.from(atob(blobJson.content.replace(/\n/g, "")), (char) => char.charCodeAt(0)));
+  }
+  if (!text.trim()) return fallback;
+  return JSON.parse(text);
 }
 
 async function currentHead(env) {

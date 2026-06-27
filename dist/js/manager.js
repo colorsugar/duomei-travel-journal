@@ -312,7 +312,7 @@
     try { publishState = JSON.parse(localStorage.getItem("duomei_last_publish") || "null"); } catch {}
     let detailedPublishState = null;
     try { detailedPublishState = JSON.parse(localStorage.getItem("duomei_publish_state") || "null"); } catch {}
-    const commitAccepted = ["commit-success", "waiting-pages", "pages-ready", "published"].includes(detailedPublishState?.state) || publishState?.status === "waiting-pages";
+    const commitAccepted = ["commit-success", "waiting-pages", "pages-ready", "published"].includes(detailedPublishState?.state) || publishState?.status === "waiting-pages" || publishState?.status === "published";
     const visiblePending = commitAccepted ? 0 : info.pending;
     info.sizes = await Promise.all(info.media.map(mediaByteSize));
     info.average = info.sizes.length ? Math.round(info.sizes.reduce((a, b) => a + b, 0) / info.sizes.length) : 0;
@@ -384,7 +384,7 @@
     }
     if (type === "health") {
       const advice = [
-        visiblePending ? `${visiblePending} 张图片等待发布，完成后 Health 会提高。` : "所有图片都已同步。",
+        info.pending ? `${info.pending} 张图片等待发布，完成后 Health 会提高。` : "所有图片都已同步。",
         info.emptySlots ? `${info.emptySlots} 个空白 Gallery 槽位只会在编辑模式显示。` : "没有多余空槽位。",
         info.storageBytes > 4 * 1024 * 1024 ? "本地 JSON 较大，建议尽快发布并清理草稿。" : "本地 JSON 体积健康。",
         "最近 10 个恢复点会保存在 IndexedDB。"
@@ -446,24 +446,9 @@
           <label>照片布局<select data-site-setting="galleryLayout"><option value="auto">自动布局</option><option value="masonry">瀑布流</option><option value="justified">两端对齐</option><option value="fixed">固定网格</option></select></label>
           <label>首页风格<select data-site-setting="heroStyle"><option value="art">旅行插画</option><option value="image">图片</option><option value="glass">玻璃</option></select></label>
           <label>语言<select data-site-setting="language"><option value="zh-CN">中文</option><option value="en" disabled>English（开发中）</option><option value="ja" disabled>日本語（开发中）</option></select></label>
-        </div>
-        <section class="nav-settings">
-          <header><strong>频道导航</strong><span>修改后会同步到公开导航</span></header>
-          ${(data.settings.navItems || []).sort((a, b) => Number(a.order || 0) - Number(b.order || 0)).map((item, index) => `
-            <article>
-              <label>短标签<input data-nav-setting="${index}" data-nav-field="label" value="${String(item.label || "").replace(/"/g, "&quot;")}"></label>
-              <label>名称<input data-nav-setting="${index}" data-nav-field="title" value="${String(item.title || "").replace(/"/g, "&quot;")}"></label>
-              <label>类型<select data-nav-setting="${index}" data-nav-field="type"><option value="travel">旅行</option><option value="photo">摄影</option><option value="thought">灵感</option><option value="essay">文章</option></select></label>
-              <label>顺序<input type="number" data-nav-setting="${index}" data-nav-field="order" value="${Number(item.order || index + 1)}"></label>
-              <label class="setting-check"><input type="checkbox" data-nav-setting="${index}" data-nav-field="visible" ${item.visible !== false ? "checked" : ""}> 显示</label>
-            </article>`).join("")}
-        </section>`;
+        </div>`;
       panel.querySelectorAll("[data-site-setting]").forEach((control) => {
         control.value = String(data.settings[control.dataset.siteSetting] ?? "");
-      });
-      panel.querySelectorAll("[data-nav-setting][data-nav-field='type']").forEach((control) => {
-        const item = data.settings.navItems?.[Number(control.dataset.navSetting)];
-        if (item) control.value = item.type || "travel";
       });
     }
     if (type === "recovery") {
@@ -644,15 +629,6 @@
     panel.hideTimer = window.setTimeout(() => { panel.hidden = true; }, 3500);
   }
 
-  function clearOperationFailure() {
-    const panel = document.getElementById("uploadProgress");
-    if (!panel) return;
-    panel.classList.remove("is-failed");
-    panel.querySelectorAll(".publish-failure, [data-status='failed']").forEach((node) => node.remove());
-    if (!panel.classList.contains("is-complete")) panel.hidden = true;
-    clearTimeout(panel.hideTimer);
-  }
-
   function failOperation(message) {
     document.getElementById("uploadProgress").classList.add("is-failed");
     document.getElementById("uploadProgressTitle").textContent = "操作失败";
@@ -676,6 +652,15 @@
     }, { once: true });
   }
 
+  function clearOperationFailure() {
+    const panel = document.getElementById("uploadProgress");
+    if (!panel) return;
+    panel.classList.remove("is-failed");
+    panel.querySelectorAll(".publish-failure, [data-status='failed']").forEach((node) => node.remove());
+    if (!panel.classList.contains("is-complete")) panel.hidden = true;
+    clearTimeout(panel.hideTimer);
+  }
+
   function bind() {
     renderIcons();
     document.getElementById("adminDashboard")?.addEventListener("click", openDashboard);
@@ -688,8 +673,7 @@
       document.getElementById("editToggle")?.click();
     });
     document.getElementById("studioPublishNow")?.addEventListener("click", () => {
-      closeDashboard();
-      document.getElementById("adminPublish")?.click();
+      window.ArchiveAdmin?.publish?.();
     });
     document.getElementById("studioViewSite")?.addEventListener("click", () => {
       if (window.ArchiveApp.state.editMode) document.getElementById("editToggle")?.click();
@@ -846,29 +830,8 @@
         window.ArchiveManager.scheduleRecovery(window.ArchiveApp.state.data, "修改设置");
         window.ArchiveRender.renderApp(window.ArchiveApp.state);
       }
-      const navIndex = event.target.dataset.navSetting;
-      const navField = event.target.dataset.navField;
-      if (navIndex !== undefined && navField) {
-        const items = window.ArchiveApp.state.data.settings.navItems || [];
-        const item = items[Number(navIndex)];
-        if (!item) return;
-        item[navField] = navField === "visible"
-          ? event.target.checked
-          : navField === "order"
-            ? Number(event.target.value || 0)
-            : event.target.value;
-        if (navField === "type") {
-          item.target = item.type === "photo" ? "gallery" : item.type === "travel" ? "journey" : item.type;
-        }
-        window.ArchiveApp.state.hasUnpublishedChanges = true;
-        window.ArchiveStore.save(window.ArchiveApp.state.data, true);
-        window.ArchiveRender.renderApp(window.ArchiveApp.state);
-      }
     });
     document.addEventListener("change", async (event) => {
-      if (event.target.dataset.siteSetting || event.target.dataset.navSetting || event.target.dataset.heroSetting) {
-        event.target.dispatchEvent(new Event("input", { bubbles: true }));
-      }
       if (event.target.id !== "heroBackgroundInput") return;
       const file = event.target.files?.[0];
       if (file) await window.ArchiveEditor.uploadHeroBackground(file);
@@ -877,5 +840,5 @@
     });
   }
 
-  window.ArchiveManager = { bind, openDashboard, refreshDashboard, afterPublish, backup, scheduleRecovery, cancelScheduledRecovery, metrics, sizeLabel, operationProgress, completeOperation, clearOperationFailure, failOperation: failOperationGlass };
+  window.ArchiveManager = { bind, openDashboard, refreshDashboard, afterPublish, backup, scheduleRecovery, cancelScheduledRecovery, metrics, sizeLabel, operationProgress, completeOperation, failOperation: failOperationGlass, clearOperationFailure };
 })();

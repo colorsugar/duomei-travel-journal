@@ -50,11 +50,23 @@
         referrerPolicy: "no-referrer"
       });
       const text = await response.text();
-      const payload = text ? JSON.parse(text) : {};
+      let payload = {};
+      if (text && text.trim()) {
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          const parseError = new Error(`后台返回了无法识别的数据：${text.slice(0, 160)}`);
+          parseError.code = "INVALID_RESPONSE";
+          parseError.status = response.status;
+          parseError.body = text;
+          throw parseError;
+        }
+      }
       if (!response.ok || payload.ok === false) {
         const error = new Error(payload.error || `请求失败：${response.status}`);
         error.code = "WORKER_RESPONSE";
         error.status = response.status;
+        error.body = text;
         throw error;
       }
       return payload;
@@ -63,11 +75,6 @@
         const timeoutError = new Error("后台在限定时间内没有响应");
         timeoutError.code = "TIMEOUT";
         throw timeoutError;
-      }
-      if (error instanceof SyntaxError) {
-        const parseError = new Error("后台返回了无法识别的数据");
-        parseError.code = "INVALID_RESPONSE";
-        throw parseError;
       }
       if (error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(error.message || "")) {
         const networkError = new Error("浏览器无法连接 Cloudflare Worker");

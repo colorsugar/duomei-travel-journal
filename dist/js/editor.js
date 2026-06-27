@@ -299,39 +299,9 @@
     target[last] = value;
   }
 
-  function setFieldLabel(name, text, visible = true) {
-    const label = document.querySelector(`[data-field="${name}"]`);
-    if (!label) return;
-    label.hidden = !visible;
-    const input = label.querySelector("input, textarea, select");
-    label.childNodes[0].nodeValue = text;
-    if (input && !visible) input.value = "";
-  }
-
-  function applyDialogMode(mode = "travel", city) {
-    const modes = {
-      travel: { title: city ? "编辑旅程" : "新增旅程", titleLabel: "城市名称", body: "正文", excerpt: "简介", cover: "上传封面", gallery: "添加照片", showPlace: true, showCategory: true, showGallery: true },
-      gallery: { title: city ? "编辑照片" : "新增照片", titleLabel: "标题", body: "说明", excerpt: "说明摘要", cover: "上传照片", gallery: "添加更多照片", showPlace: true, showCategory: false, showGallery: true },
-      photo: { title: city ? "编辑照片" : "新增照片", titleLabel: "标题", body: "说明", excerpt: "说明摘要", cover: "上传照片", gallery: "添加更多照片", showPlace: true, showCategory: false, showGallery: true },
-      thought: { title: city ? "编辑灵感" : "新增灵感", titleLabel: "标题", body: "灵感内容", excerpt: "简短摘要", cover: "可选图片", gallery: "添加图片", showPlace: false, showCategory: false, showGallery: false },
-      essay: { title: city ? "编辑文章" : "新增文章", titleLabel: "标题", body: "正文", excerpt: "摘要", cover: "封面图", gallery: "添加配图", showPlace: false, showCategory: true, showGallery: false }
-    };
-    const config = modes[mode] || modes.travel;
-    state.editorMode = mode;
-    $("#cityDialogTitle").textContent = config.title;
-    setFieldLabel("title", config.titleLabel);
-    setFieldLabel("date", "日期");
-    setFieldLabel("place", "地点", config.showPlace);
-    setFieldLabel("category", "分类", config.showCategory);
-    setFieldLabel("excerpt", config.excerpt);
-    setFieldLabel("body", config.body);
-    setFieldLabel("cover", config.cover);
-    setFieldLabel("gallery", config.gallery, config.showGallery);
-  }
-
-  function fillCityDialog(state, city, mode = "travel") {
+  function fillCityDialog(state, city) {
     state.editingCityId = city?.id || "";
-    applyDialogMode(mode, city);
+    $("#cityDialogTitle").textContent = city ? "编辑城市" : "新增城市";
     $("#cityTitle").value = city?.title || "";
     $("#citySlug").value = city?.slug || "";
     $("#cityPlace").value = city?.place || "";
@@ -347,8 +317,8 @@
     $("#cityGallery").value = "";
   }
 
-  function openCityEditor(state, city, mode = state.activeChannel || "travel") {
-    fillCityDialog(state, city, mode);
+  function openCityEditor(state, city) {
+    fillCityDialog(state, city);
     openDialog($("#cityDialog"));
   }
 
@@ -368,8 +338,7 @@
     city.place = formValue("cityPlace");
     city.published = formValue("cityPublished") || today();
     city.updated = today();
-    city.category = formValue("cityCategory") || (state.editorMode === "essay" ? "文章" : state.editorMode === "gallery" || state.editorMode === "photo" ? "摄影" : state.editorMode === "thought" ? "灵感" : "Travel");
-    city.channelType = state.editorMode || "travel";
+    city.category = formValue("cityCategory");
     city.galleryLayout = $("#cityGalleryLayout")?.value || "auto";
     city.excerpt = formValue("cityExcerpt");
     city.bodyTop = formValue("cityBody");
@@ -792,12 +761,8 @@
       const name = action.dataset.action;
 
       if (name === "home") window.ArchiveApp.showHome();
-      if (name === "add-city" && isEditing(state)) openCityEditor(state, null, action.dataset.channelCreate || state.activeChannel || "travel");
+      if (name === "add-city" && isEditing(state)) openCityEditor(state);
       if (name === "edit-city" && isEditing(state)) openCityEditor(state, cityById(state.data, action.dataset.id));
-      if (name === "cancel-city") {
-        event.preventDefault();
-        closeDialog($("#cityDialog"));
-      }
       if (name === "save-city") {
         event.preventDefault();
         await saveCityDialog(state);
@@ -818,6 +783,10 @@
       if (name === "export" && isEditing(state)) window.ArchiveStore.exportJson(state.data);
       if (name === "import" && isEditing(state)) $("#importInput")?.click();
       if (name === "undo" && isEditing(state)) undo(state);
+      if (name === "publish" && document.body.classList.contains("admin-authenticated")) {
+        event.preventDefault();
+        window.ArchiveAdmin?.publish?.();
+      }
       if (name === "top") window.scrollTo({ top: 0, behavior: "smooth" });
       if (name === "random") window.ArchiveApp.openRandom();
       if (name === "next") window.ArchiveApp.openNext();

@@ -185,7 +185,7 @@
         <div class="card-meta">${esc(city.published)}<br>${esc(city.place)}</div>
         <div class="card-title">${esc(city.title)}</div>
       </article>
-    `).join("") + `<button class="add-card reveal edit-only" data-action="add-city" data-channel-create="travel">＋<br><span>新增旅程</span></button>`;
+    `).join("") + `<button class="add-card reveal edit-only" data-action="add-city">＋<br><span>新增旅程</span></button>`;
   }
 
   function renderDetail(state, slug, countView = true) {
