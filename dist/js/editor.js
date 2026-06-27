@@ -132,8 +132,40 @@
     return file;
   }
 
-  async function cropAndTheme(file, onStage = () => {}) {
+  async function compressDirect(file, onStage = () => {}) {
     await ensureFileReady(file);
+    onStage("正在读取图片");
+    const bitmap = await createImageBitmap(file);
+    const maxSide = 1800;
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+    onStage("正在压缩并转换 WebP");
+    const quality = Number(window.ArchiveApp?.state?.data?.settings?.imageQuality || .82);
+    const image = canvas.toDataURL("image/webp", Math.min(.95, Math.max(.55, quality)));
+    const outputBytes = Math.round((image.length - image.indexOf(",") - 1) * .75);
+    window.ArchiveImage.lastCompression = {
+      name: file.name || "image",
+      originalBytes: file.size || 0,
+      outputBytes,
+      width,
+      height,
+      aspectMode: "original",
+      uploadedAt: new Date().toISOString()
+    };
+    const thumb = await window.ArchiveImage.thumb(image);
+    const theme = await window.ArchiveImage.extractTheme(image);
+    return { image, thumb, theme, meta: { ...window.ArchiveImage.lastCompression } };
+  }
+
+  async function cropAndTheme(file, onStage = () => {}, options = {}) {
+    await ensureFileReady(file);
+    if (options.crop === false) return compressDirect(file, onStage);
     onStage("正在读取图片");
     const image = await window.ArchiveImage.cropFile(file);
     if (!image) return null;
@@ -235,7 +267,7 @@
       }
       updateUploadProgress(index, files.length, file, "读取与裁剪");
       try {
-        const result = await cropAndTheme(file, (status) => updateUploadProgress(index, files.length, file, status));
+        const result = await cropAndTheme(file, (status) => updateUploadProgress(index, files.length, file, status), { crop: files.length === 1 ? true : false });
         if (!result) {
           updateUploadProgress(index, files.length, file, "已取消");
           continue;

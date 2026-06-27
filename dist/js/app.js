@@ -10,7 +10,15 @@
   };
 
   function showOnly(view) {
-    const views = { home: $("#homeView"), detail: $("#detailView"), tags: $("#tagsView"), stats: $("#statsView") };
+    const views = {
+      home: $("#homeView"),
+      detail: $("#detailView"),
+      tags: $("#tagsView"),
+      stats: $("#statsView"),
+      gallery: $("#galleryView"),
+      thought: $("#thoughtView"),
+      essay: $("#essayView")
+    };
     Object.entries(views).forEach(([key, element]) => {
       element.hidden = key !== view;
       element.classList.toggle("active", key === view);
@@ -51,6 +59,37 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function showGallery() {
+    state.currentSlug = "";
+    showOnly("gallery");
+    window.ArchiveImage.applyTheme();
+    const root = document.getElementById("channelGalleryGrid");
+    if (root) {
+      const photos = state.data.journeys
+        .filter((city) => city.status !== "asset")
+        .flatMap((city) => (city.gallery || []).filter((photo) => photo.src || photo.thumb || photo.image).map((photo) => ({ city, photo })));
+      root.innerHTML = photos.length
+        ? photos.map(({ city, photo }, index) => `
+          <article class="gallery-item reveal">
+            <div class="photo" data-city="${city.id}" data-photo="${photo.id}">
+              <img src="${photo.thumb || photo.src || photo.image}" alt="${photo.alt || photo.title || city.title}">
+            </div>
+            <div class="photo-copy"><h3>${photo.title || city.title}</h3><p>${photo.caption || city.place || ""}</p></div>
+          </article>
+        `).join("")
+        : `<div class="empty-channel">这里还没有内容</div>`;
+    }
+    requestAnimationFrame(() => window.ArchiveFX?.observe());
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function showChannel(name) {
+    state.currentSlug = "";
+    showOnly(name);
+    window.ArchiveImage.applyTheme();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function openRandom() {
     const journeys = state.data.journeys.filter((city) => city.status !== "asset");
     if (!journeys.length) return;
@@ -73,14 +112,9 @@
       if (view.dataset.view === "journey") showHome();
       if (view.dataset.view === "tags") showTags();
       if (view.dataset.view === "stats") showStats();
-      if (view.dataset.view === "gallery" || view.dataset.view === "photo") {
-        showHome();
-        setTimeout(() => document.getElementById("journeyGrid")?.scrollIntoView({ behavior: "smooth", block: "start" }), 180);
-      }
-      if (view.dataset.view === "thought" || view.dataset.view === "essay") {
-        showHome();
-        setTimeout(() => document.getElementById("homeSections")?.scrollIntoView({ behavior: "smooth", block: "start" }), 180);
-      }
+      if (view.dataset.view === "gallery" || view.dataset.view === "photo") showGallery();
+      if (view.dataset.view === "thought") showChannel("thought");
+      if (view.dataset.view === "essay") showChannel("essay");
     });
   }
 
@@ -125,6 +159,7 @@
     openCity,
     showTags,
     showStats,
+    showGallery,
     openRandom,
     openNext
   };

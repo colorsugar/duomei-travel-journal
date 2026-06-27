@@ -21,6 +21,7 @@
     $("#adminKey").value = window.ArchiveCMS.adminKey();
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "open");
+    window.setTimeout(() => $("#adminId")?.focus(), 60);
   }
 
   function closeDialog() {
@@ -36,6 +37,7 @@
     setAdminStatus(`后台已连接${health.actor ? ` · ${health.actor}` : ""}`);
     toast("管理员已登录");
     closeDialog();
+    window.ArchiveRender?.renderApp(window.ArchiveApp.state);
     window.ArchiveManager?.openDashboard();
     return health;
   }
@@ -81,7 +83,7 @@
       TIMEOUT: "先查看 GitHub 是否已经生成 Commit；若没有，可安全重试。",
       INVALID_RESPONSE: "确认 Worker 已部署且地址正确，然后重试。",
       WORKER_RESPONSE: "后台拒绝了请求，请根据上方原因检查图片大小或仓库权限。",
-      WORKER_URL_MISSING: "重新进入后台并填写 Cloudflare Worker 地址。"
+      WORKER_URL_MISSING: "重新打开登录窗口并填写 Cloudflare Worker 地址。"
     };
     const suggestion = suggestions[error?.code] || "草稿已经保留，可稍后重试；不会丢失本次修改。";
     const message = `发布失败\n阶段：${stage}\n原因：${reason}\n建议：${suggestion}`;
@@ -191,6 +193,16 @@
     };
   }
 
+  function validateArchive(archive) {
+    const normalized = window.ArchiveStore.normalize(archive);
+    JSON.parse(JSON.stringify({
+      settings: { site: normalized.site, settings: normalized.settings },
+      journeys: normalized.journeys
+    }));
+    if (!Array.isArray(normalized.journeys)) throw new Error("Journey 数据不是有效列表");
+    return normalized;
+  }
+
   async function publish(previousMessage = "", isRetry = false) {
     if (publishing) return;
     if (!document.body.classList.contains("admin-authenticated")) {
@@ -225,7 +237,8 @@
       currentStage = "更新 Journey JSON";
       window.ArchiveManager?.operationProgress(publishStages, 1, "正在更新 JSON");
       toast("正在发布到 GitHub...");
-      const archive = window.ArchiveStore.normalize(window.ArchiveApp.state.data);
+      const archive = validateArchive(window.ArchiveApp.state.data);
+      toast("JSON 校验通过，正在发布...");
       currentStage = "连接 Cloudflare Worker 并上传 GitHub";
       window.ArchiveManager?.operationProgress(publishStages, 2, "GitHub 正在处理");
       const result = await window.ArchiveCMS.api("/api/publish", {
@@ -239,6 +252,11 @@
       }
 
       currentStage = "读取发布后的数据";
+      localStorage.setItem("duomei_publish_state", JSON.stringify({
+        state: "commit-success",
+        savedAt: new Date().toISOString(),
+        commit: result.commit
+      }));
       const syncedArchive = await canonicalArchive(result.archive);
       window.ArchiveApp.state.data = window.ArchiveStore.normalize(syncedArchive);
       window.ArchiveStore.save(window.ArchiveApp.state.data, true);
@@ -370,6 +388,16 @@
     $("#adminRestoreDraft")?.addEventListener("click", restoreDraft);
     $("#adminLogout")?.addEventListener("click", logoutAdmin);
     $("#adminClose")?.addEventListener("click", closeDialog);
+    $("#adminDialog")?.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDialog();
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        $("#adminConnect")?.click();
+      }
+    });
     bindLogoSecret();
     bindAutoSave();
 

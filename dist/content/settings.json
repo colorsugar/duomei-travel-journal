@@ -54,6 +54,7 @@
     }
   },
   "settings": {
+    "adminEntryLabel": "编",
     "analytics": {
       "cloudflare": "",
       "firebase": "",

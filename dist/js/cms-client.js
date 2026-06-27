@@ -2,9 +2,10 @@
   const CONFIG_KEY = "duomei_cms_worker_url";
   const ADMIN_KEY = "duomei_cms_admin_key";
   const DRAFT_KEY = "duomei_travel_archive_draft_v3";
+  const DEFAULT_WORKER_URL = "https://duomei-travel-journal-admin.colorsugar.workers.dev";
 
   function workerUrl() {
-    return localStorage.getItem(CONFIG_KEY) || "";
+    return localStorage.getItem(CONFIG_KEY) || DEFAULT_WORKER_URL;
   }
 
   function setWorkerUrl(url) {

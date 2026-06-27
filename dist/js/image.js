@@ -28,13 +28,19 @@
           freeFrame: null,
           cropAction: ""
         };
-        state.cropRatio = img.naturalWidth / img.naturalHeight;
         image().src = src;
         zoom().value = "1";
-        aspect().value = "original";
+        const preferredAspect = localStorage.getItem("duomei_crop_apply_ratio") || "original";
+        aspect().value = [...aspect().options].some((option) => option.value === preferredAspect) ? preferredAspect : "original";
+        state.cropRatio = aspect().value === "original"
+          ? img.naturalWidth / img.naturalHeight
+          : aspect().value === "free"
+            ? "free"
+            : Number(aspect().value);
         zoomText().textContent = "100%";
         if (typeof dialog().showModal === "function") dialog().showModal();
         else dialog().setAttribute("open", "open");
+        if (aspect().value === "free") initialFreeFrame();
         requestAnimationFrame(fit);
       };
       img.onerror = () => {
@@ -134,28 +140,44 @@
 
   async function rotateSource() {
     if (!state) return;
-    const source = image();
-    const canvas = document.createElement("canvas");
-    canvas.width = state.naturalHeight;
-    canvas.height = state.naturalWidth;
-    const ctx = canvas.getContext("2d");
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate(Math.PI / 2);
-    ctx.drawImage(source, -state.naturalWidth / 2, -state.naturalHeight / 2);
-    const rotated = canvas.toDataURL("image/webp", .94);
-    if (state.src?.startsWith("blob:")) URL.revokeObjectURL(state.src);
-    state.src = rotated;
-    state.naturalWidth = canvas.width;
-    state.naturalHeight = canvas.height;
-    state.freeFrame = null;
-    image().src = rotated;
-    await image().decode().catch(() => {});
-    if (aspect().value === "original") state.cropRatio = state.naturalWidth / state.naturalHeight;
-    if (aspect().value === "free") {
-      state.cropRatio = "free";
-      initialFreeFrame();
+    const button = document.querySelector('[data-action="crop-rotate"]');
+    if (button?.disabled) return;
+    if (button) {
+      button.disabled = true;
+      button.dataset.originalText = button.textContent;
+      button.textContent = "旋转中...";
     }
-    fit();
+    try {
+      const source = image();
+      const canvas = document.createElement("canvas");
+      canvas.width = state.naturalHeight;
+      canvas.height = state.naturalWidth;
+      const ctx = canvas.getContext("2d");
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(source, -state.naturalWidth / 2, -state.naturalHeight / 2);
+      const rotated = canvas.toDataURL("image/webp", .94);
+      if (state.src?.startsWith("blob:")) URL.revokeObjectURL(state.src);
+      state.src = rotated;
+      state.naturalWidth = canvas.width;
+      state.naturalHeight = canvas.height;
+      state.freeFrame = null;
+      image().src = rotated;
+      await image().decode().catch(() => {});
+      if (aspect().value === "original") state.cropRatio = state.naturalWidth / state.naturalHeight;
+      if (aspect().value === "free") {
+        state.cropRatio = "free";
+        initialFreeFrame();
+      }
+      fit();
+    } catch (error) {
+      window.ArchiveUI?.toast(`旋转失败：${error.message || "请重试"}`);
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = button.dataset.originalText || "旋转 90°";
+      }
+    }
   }
 
   function update() {
@@ -373,6 +395,14 @@
       fit();
     });
     document.querySelector('[data-action="crop-save"]').addEventListener("click", saveCrop);
+    document.querySelector('[data-action="crop-save-next"]')?.addEventListener("click", saveCrop);
+    document.querySelector('[data-action="crop-skip"]')?.addEventListener("click", () => finish(""));
+    document.querySelector('[data-action="crop-prev"]')?.addEventListener("click", () => window.ArchiveUI?.toast("批量裁剪时会切换到上一张"));
+    document.querySelector('[data-action="crop-next"]')?.addEventListener("click", () => window.ArchiveUI?.toast("批量裁剪时会切换到下一张"));
+    document.querySelector('[data-action="crop-apply-all"]')?.addEventListener("click", () => {
+      localStorage.setItem("duomei_crop_apply_ratio", aspect().value || "original");
+      window.ArchiveUI?.toast("当前比例会应用到后续批量图片");
+    });
     document.querySelector('[data-action="crop-reset"]').addEventListener("click", fit);
     document.querySelector('[data-action="crop-rotate"]').addEventListener("click", rotateSource);
     document.querySelector('[data-action="crop-cancel"]').addEventListener("click", () => finish(""));

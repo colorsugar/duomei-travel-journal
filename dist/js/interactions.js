@@ -9,14 +9,39 @@
   let tagItems = [];
   let lightboxIndex = 0;
   let lightboxPhotos = [];
+  const notifications = [];
 
-  function toast(message) {
+  function renderNotifications() {
+    const list = $("#notificationList");
+    if (!list) return;
+    list.innerHTML = notifications.map((item) => `
+      <article class="notification-item ${item.type}">
+        <strong>${esc(item.title || "通知")}</strong>
+        <p>${esc(item.message)}</p>
+        <time>${new Date(item.time).toLocaleTimeString()}</time>
+      </article>
+    `).join("");
+  }
+
+  function notify(message, type = "normal", title = "") {
+    notifications.unshift({ message: String(message || ""), type, title, time: Date.now() });
+    notifications.splice(30);
+    renderNotifications();
+  }
+
+  function toast(message, type = "normal") {
     const el = $("#toast");
     if (!el) return;
+    const text = String(message || "");
+    const inferred = /失败|错误|无法|error|failed/i.test(text) ? "error" : type;
+    notify(text, inferred, inferred === "error" ? "需要处理" : "通知");
     el.textContent = message;
+    el.dataset.type = inferred;
     el.classList.add("show");
     clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => el.classList.remove("show"), 2200);
+    if (inferred !== "error") {
+      toast.timer = setTimeout(() => el.classList.remove("show"), inferred === "important" ? 12000 : 5000);
+    }
   }
 
   function observe() {
@@ -319,6 +344,26 @@
         if (input) input.value = "";
         searchStable("");
       }
+      if (event.target.closest("[data-action='toggle-language']")) {
+        const menu = $("#languageMenu");
+        if (menu) menu.hidden = !menu.hidden;
+      }
+      const lang = event.target.closest("[data-language]");
+      if (lang) {
+        document.documentElement.lang = lang.dataset.language;
+        localStorage.setItem("duomei_public_language", lang.dataset.language);
+        $("#languageMenu").hidden = true;
+        window.ArchiveUI?.toast(`语言已切换：${lang.textContent.trim()}`);
+      }
+      if (event.target.closest("#toast")) {
+        const center = $("#notificationCenter");
+        if (center) center.hidden = false;
+        $("#toast")?.classList.remove("show");
+      }
+      if (event.target.closest("#notificationClose")) {
+        const center = $("#notificationCenter");
+        if (center) center.hidden = true;
+      }
       const tag = event.target.closest("[data-filter-tag]");
       if (tag) filterTag(tag.dataset.filterTag);
     });
@@ -326,7 +371,7 @@
 
   function init(state) {
     stateRef = state;
-    window.ArchiveUI = { toast };
+    window.ArchiveUI = { toast, notify };
     bindCardMotion();
     bindLightbox();
     bindFilters();

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>多美 | Travel Journal</title>
-  <link rel="stylesheet" href="./css/archive.css?v=20260627-v5-1">
+  <link rel="stylesheet" href="./css/archive.css?v=20260628-v5-3">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -21,7 +21,7 @@
       <button class="pill edit-only admin-only" type="button" data-action="import">导入 JSON</button>
       <button class="pill edit-only admin-only" type="button" data-action="undo">撤销</button>
       <button class="pill admin-only admin-mode-indicator" id="adminDashboard" type="button">返回后台</button>
-      <button id="adminEntry" class="pill admin-access" type="button">进入后台</button>
+      <button id="adminEntry" class="pill admin-access" type="button">编</button>
       <span class="pill admin-status" id="adminStatus">后台已连接</span>
       <button class="pill admin-only" id="adminLogout" type="button">退出管理</button>
       <nav id="publicNav" class="public-nav" aria-label="内容频道"></nav>
@@ -92,16 +92,51 @@
       </div>
       <div id="statsGrid" class="stats-grid"></div>
     </section>
+
+    <section id="galleryView" class="view page-pad channel-view">
+      <div class="page-title reveal">
+        <p class="section-kicker">Photography</p>
+        <h1>摄影</h1>
+        <p>这里会展示所有旅行照片。</p>
+      </div>
+      <div id="channelGalleryGrid" class="gallery layout-auto"></div>
+    </section>
+
+    <section id="thoughtView" class="view page-pad channel-view">
+      <div class="page-title reveal">
+        <p class="section-kicker">Thought</p>
+        <h1>灵感</h1>
+        <p>这里还没有内容。</p>
+      </div>
+    </section>
+
+    <section id="essayView" class="view page-pad channel-view">
+      <div class="page-title reveal">
+        <p class="section-kicker">Essay</p>
+        <h1>文章</h1>
+        <p>这里还没有内容。</p>
+      </div>
+    </section>
   </main>
 
-  <footer class="footer">多美 © 2026</footer>
+  <footer class="footer">
+    <span>多美 © 2026</span>
+    <div class="language-switch">
+      <button type="button" data-action="toggle-language">🌐</button>
+      <div id="languageMenu" class="language-menu" hidden>
+        <button type="button" data-language="zh-CN">中文</button>
+        <button type="button" data-language="en">English</button>
+        <button type="button" data-language="ja">日本語</button>
+      </div>
+    </div>
+  </footer>
 
   <div class="float-panel">
-    <button type="button" data-action="focus-search">鎼滅储</button>
-    <button type="button" id="bottomAdminEntry">杩涘叆鍚庡彴</button>
     <button type="button" data-action="top">顶部</button>
     <button type="button" data-action="random">随机</button>
     <button type="button" data-action="next">下一篇</button>
+    <button type="button" data-action="focus-search">搜索</button>
+    <button type="button" id="bottomAdminEntry">编</button>
   </div>
 
   <button id="quickAddCity" class="quick-add edit-only admin-only" type="button" data-action="add-city">＋ 添加城市</button>
@@ -121,6 +156,10 @@
     <div id="uploadProgressItems" class="upload-progress-items"></div>
   </aside>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <aside id="notificationCenter" class="notification-center" hidden>
+    <header><strong>通知</strong><button id="notificationClose" type="button" aria-label="关闭">×</button></header>
+    <div id="notificationList"></div>
+  </aside>
 
   <div id="textToolbar" class="text-toolbar edit-only admin-only" aria-label="文字样式">
     <select data-style="font" title="字体">
@@ -148,16 +187,16 @@
   <dialog id="adminDialog" class="dialog">
     <form method="dialog" class="dialog-card">
       <header class="dialog-head">
-        <h2>管理员</h2>
+        <h2>登录</h2>
         <button id="adminClose" class="dialog-close" value="cancel" aria-label="关闭">×</button>
       </header>
-      <p class="admin-note">GitHub Token 不会进入网页。请填写 Cloudflare Worker 地址和管理员密钥；管理员密钥只保存在当前浏览器会话。</p>
-      <label class="admin-field">Worker 地址<input id="workerUrl" placeholder="https://duomei-travel-journal-admin.your-name.workers.dev"></label>
-      <label class="admin-field">管理员密钥<input id="adminKey" type="password" autocomplete="current-password" placeholder="ADMIN_KEY"></label>
+      <label class="admin-field">ID<input id="adminId" autocomplete="username" placeholder="Duomei"></label>
+      <label class="admin-field admin-worker-field">Worker 地址<input id="workerUrl" placeholder="https://duomei-travel-journal-admin.your-name.workers.dev"></label>
+      <label class="admin-field">Password<input id="adminKey" type="password" autocomplete="current-password"></label>
       <div class="dialog-actions">
-        <button id="adminRestoreDraft" class="pill" type="button">恢复草稿</button>
-        <button id="adminEdit" class="pill" type="button">进入编辑</button>
-        <button id="adminConnect" class="pill primary" type="button">连接后台</button>
+        <button id="adminRestoreDraft" class="pill admin-extra-action" type="button">恢复草稿</button>
+        <button id="adminEdit" class="pill admin-extra-action" type="button">进入编辑</button>
+        <button id="adminConnect" class="pill primary" type="button">Login</button>
       </div>
     </form>
   </dialog>
@@ -304,9 +343,14 @@
         </select>
       </label>
       <footer class="dialog-actions">
+        <button class="pill crop-batch-action" type="button" data-action="crop-prev">上一张</button>
+        <button class="pill crop-batch-action" type="button" data-action="crop-next">下一张</button>
+        <button class="pill crop-batch-action" type="button" data-action="crop-skip">跳过</button>
+        <button class="pill crop-batch-action" type="button" data-action="crop-apply-all">比例应用到全部</button>
         <button class="pill" value="cancel" data-action="crop-cancel">取消</button>
         <button class="pill" type="button" data-action="crop-rotate">旋转 90°</button>
         <button class="pill" type="button" data-action="crop-reset">重置</button>
+        <button class="pill primary" type="button" data-action="crop-save-next">保存并继续</button>
         <button class="pill primary" type="button" data-action="crop-save">保存图片</button>
       </footer>
     </form>
@@ -326,15 +370,15 @@
     <p id="lightboxCaption"></p>
   </div>
 
-  <script src="./js/data.js?v=20260627-v5-1"></script>
-  <script src="./js/store.js?v=20260627-v5-1"></script>
-  <script src="./js/image.js?v=20260627-v5-1"></script>
-  <script src="./js/render.js?v=20260627-v5-1"></script>
-  <script src="./js/editor.js?v=20260627-v5-1"></script>
-  <script src="./js/interactions.js?v=20260627-v5-1"></script>
-  <script src="./js/cms-client.js?v=20260627-v5-1"></script>
-  <script src="./js/manager.js?v=20260627-v5-1"></script>
-  <script src="./js/admin.js?v=20260627-v5-1"></script>
-  <script src="./js/app.js?v=20260627-v5-1"></script>
+  <script src="./js/data.js?v=20260628-v5-3"></script>
+  <script src="./js/store.js?v=20260628-v5-3"></script>
+  <script src="./js/image.js?v=20260628-v5-3"></script>
+  <script src="./js/render.js?v=20260628-v5-3"></script>
+  <script src="./js/editor.js?v=20260628-v5-3"></script>
+  <script src="./js/interactions.js?v=20260628-v5-3"></script>
+  <script src="./js/cms-client.js?v=20260628-v5-3"></script>
+  <script src="./js/manager.js?v=20260628-v5-3"></script>
+  <script src="./js/admin.js?v=20260628-v5-3"></script>
+  <script src="./js/app.js?v=20260628-v5-3"></script>
 </body>
 </html>

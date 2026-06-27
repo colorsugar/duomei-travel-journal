@@ -201,6 +201,7 @@
         galleryLayout: "auto",
         heroStyle: "art",
         language: "zh-CN",
+        adminEntryLabel: "编",
         ...(incoming.settings || {}),
         navItems: normalizeNavItems(incoming.settings?.navItems || base.settings?.navItems)
       },

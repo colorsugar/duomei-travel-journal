@@ -59,6 +59,12 @@
       journeyDescription.innerHTML = lines(state.data.site.journeyDescription);
       journeyDescription.setAttribute("style", style(state.data.site.styles?.journeyDescription));
     }
+    const adminLabel = state.data.settings?.adminEntryLabel || "编";
+    const isAdmin = document.body.classList.contains("admin-authenticated");
+    ["adminEntry", "bottomAdminEntry"].forEach((id) => {
+      const node = document.getElementById(id);
+      if (node) node.textContent = isAdmin ? "返回后台" : adminLabel;
+    });
     applyHero(state);
     renderPublicNav(state);
   }
@@ -105,7 +111,7 @@
     if (config.featuredMode === "quote" && config.quote) {
       featured.innerHTML = `<blockquote>${lines(config.quote)}${config.quoteAuthor ? `<cite>— ${esc(config.quoteAuthor)}</cite>` : ""}</blockquote>`;
     } else if (selected) {
-      featured.innerHTML = `<button type="button" data-open-city="${esc(selected.slug)}"><span>Featured Journey</span><strong>${esc(selected.title)}</strong><small>${esc(selected.place || selected.published || "")}</small></button>`;
+      featured.innerHTML = `<button type="button" data-open-city="${esc(selected.slug)}"><span>精选旅程</span><strong>${esc(selected.title)}</strong><small>${esc(selected.place || selected.published || "")}</small></button>`;
     } else {
       featured.innerHTML = "";
     }
