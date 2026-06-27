@@ -36,7 +36,7 @@
     "journeyTitle": "慢慢翻阅",
     "journeyDescription": "从一个地方，慢慢走到下一个地方。",
     "hero": {
-      "mode": "art",
+      "mode": "image",
       "backgroundImage": "",
       "color": "#f7f3eb",
       "gradient": "linear-gradient(135deg,#edf3f1 0%,#f8f4eb 52%,#e2ebe7 100%)",
@@ -54,12 +54,6 @@
     }
   },
   "settings": {
-    "navItems": [
-      { "key": "travel", "label": "游", "title": "旅行", "visible": true, "order": 1, "target": "journey", "type": "travel" },
-      { "key": "photo", "label": "景", "title": "摄影", "visible": true, "order": 2, "target": "gallery", "type": "photo" },
-      { "key": "thought", "label": "想", "title": "灵感", "visible": true, "order": 3, "target": "thought", "type": "thought" },
-      { "key": "essay", "label": "文", "title": "文章", "visible": true, "order": 4, "target": "essay", "type": "essay" }
-    ],
     "analytics": {
       "cloudflare": "",
       "firebase": "",
@@ -71,6 +65,44 @@
     "animation": "smooth",
     "galleryLayout": "auto",
     "heroStyle": "art",
-    "language": "zh-CN"
+    "language": "zh-CN",
+    "navItems": [
+      {
+        "key": "travel",
+        "label": "游",
+        "title": "旅行",
+        "visible": true,
+        "order": 1,
+        "target": "journey",
+        "type": "travel"
+      },
+      {
+        "key": "photo",
+        "label": "景",
+        "title": "摄影",
+        "visible": true,
+        "order": 2,
+        "target": "gallery",
+        "type": "photo"
+      },
+      {
+        "key": "thought",
+        "label": "想",
+        "title": "灵感",
+        "visible": true,
+        "order": 3,
+        "target": "thought",
+        "type": "thought"
+      },
+      {
+        "key": "essay",
+        "label": "文",
+        "title": "文章",
+        "visible": true,
+        "order": 4,
+        "target": "essay",
+        "type": "essay"
+      }
+    ]
   }
 }
