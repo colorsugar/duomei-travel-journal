@@ -54,7 +54,6 @@
     }
   },
   "settings": {
-    "adminEntryLabel": "编",
     "analytics": {
       "cloudflare": "",
       "firebase": "",
@@ -67,6 +66,7 @@
     "galleryLayout": "auto",
     "heroStyle": "art",
     "language": "zh-CN",
+    "adminEntryLabel": "编",
     "navItems": [
       {
         "key": "travel",
