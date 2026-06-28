@@ -620,6 +620,7 @@
 
   function openDashboard() {
     refreshDashboard();
+    document.body.classList.add("studio-open");
     const dialog = document.getElementById("dashboardDialog");
     if (typeof dialog.showModal === "function") dialog.showModal();
     else dialog.setAttribute("open", "open");
@@ -633,6 +634,8 @@
     const dialog = document.getElementById("dashboardDialog");
     if (typeof dialog.close === "function") dialog.close();
     else dialog.removeAttribute("open");
+    document.querySelector(".studio-shell")?.classList.remove("sidebar-open");
+    document.body.classList.remove("studio-open");
   }
 
   function operationProgress(stages, activeIndex, title = "正在处理") {
