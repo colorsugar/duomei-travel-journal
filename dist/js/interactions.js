@@ -10,27 +10,33 @@
   let lightboxIndex = 0;
   let lightboxPhotos = [];
   const notifications = [];
+  let unreadNotifications = 0;
 
   function renderNotifications() {
     const list = $("#notificationList");
     if (!list) return;
-    list.innerHTML = notifications.map((item) => `
+    list.innerHTML = `
+      <div class="notification-taxonomy" aria-label="通知分类">
+        <span>Publish</span><span>Upload</span><span>Compression</span><span>Save</span><span>Error</span><span>Time</span>
+      </div>
+      ${notifications.map((item) => `
       <article class="notification-item ${item.type}">
         <strong>${esc(item.title || "通知")}</strong>
         <p>${esc(item.message)}</p>
         <time>${new Date(item.time).toLocaleTimeString()}</time>
       </article>
-    `).join("");
+    `).join("") || "<p>暂无通知。</p>"}`;
     const badge = $("#notificationBadge");
     if (badge) {
-      badge.hidden = notifications.length === 0;
-      badge.textContent = String(Math.min(99, notifications.length));
+      badge.hidden = unreadNotifications === 0;
+      badge.textContent = String(Math.min(99, unreadNotifications));
     }
   }
 
   function notify(message, type = "normal", title = "") {
     notifications.unshift({ message: String(message || ""), type, title, time: Date.now() });
     notifications.splice(30);
+    unreadNotifications += 1;
     renderNotifications();
   }
 
@@ -382,6 +388,7 @@
       if (event.target.closest("#toast")) {
         const center = $("#notificationCenter");
         if (center) {
+          unreadNotifications = 0;
           renderNotifications();
           center.hidden = false;
           center.classList.add("show");
@@ -391,6 +398,7 @@
       if (event.target.closest("#notificationBell")) {
         const center = $("#notificationCenter");
         if (center) {
+          unreadNotifications = 0;
           renderNotifications();
           center.hidden = false;
           center.classList.add("show");

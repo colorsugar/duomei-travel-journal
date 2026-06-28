@@ -63,35 +63,24 @@
     state.currentSlug = "";
     showOnly("gallery");
     window.ArchiveImage.applyTheme();
-    const root = document.getElementById("channelGalleryGrid");
-    if (root) {
-      const photos = state.data.journeys
-        .filter((city) => city.status !== "asset")
-        .flatMap((city) => {
-          const cover = city.coverImage || city.cardImage
-            ? [{ city, photo: { id: `cover-${city.id}`, src: city.coverImage || city.cardImage, thumb: city.coverThumb || city.cardThumb, title: city.title, caption: city.place, isCover: true } }]
-            : [];
-          return cover.concat((city.gallery || []).filter((photo) => photo.src || photo.thumb || photo.image).map((photo) => ({ city, photo })));
-        });
-      root.innerHTML = photos.length
-        ? photos.map(({ city, photo }, index) => `
-          <article class="gallery-item reveal">
-            <div class="photo" data-city="${city.id}" data-photo="${photo.id}">
-              <img src="${photo.thumb || photo.src || photo.image}" alt="${photo.alt || photo.title || city.title}">
-            </div>
-            <div class="photo-copy"><h3>${photo.title || city.title}</h3><p>${photo.caption || city.place || ""}</p></div>
-          </article>
-        `).join("")
-        : `<div class="empty-channel">这里还没有内容</div>`;
-    }
+    window.ArchiveRender.renderContentList(state, "photography");
     requestAnimationFrame(() => window.ArchiveFX?.observe());
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function showChannel(name) {
+  function showContent(name) {
     state.currentSlug = "";
     showOnly(name);
     window.ArchiveImage.applyTheme();
+    if (name === "thought" || name === "essay") window.ArchiveRender.renderContentList(state, name);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openContent(type, id) {
+    state.currentSlug = "";
+    showOnly("detail");
+    window.ArchiveImage.applyTheme();
+    window.ArchiveRender.renderContentDetail(state, type, id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -118,8 +107,8 @@
       if (view.dataset.view === "tags") showTags();
       if (view.dataset.view === "stats") showStats();
       if (view.dataset.view === "gallery" || view.dataset.view === "photo") showGallery();
-      if (view.dataset.view === "thought") showChannel("thought");
-      if (view.dataset.view === "essay") showChannel("essay");
+      if (view.dataset.view === "thought") showContent("thought");
+      if (view.dataset.view === "essay") showContent("essay");
     });
   }
 
@@ -165,6 +154,8 @@
     showTags,
     showStats,
     showGallery,
+    showContent,
+    openContent,
     openRandom,
     openNext
   };

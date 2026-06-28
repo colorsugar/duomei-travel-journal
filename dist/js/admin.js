@@ -186,10 +186,15 @@
   }
 
   function hasEmbeddedImages(archive) {
-    return (archive?.journeys || []).some((city) =>
+    const journeyHasImages = (archive?.journeys || []).some((city) =>
       [city.coverImage, city.coverThumb, city.cardImage, city.cardThumb, ...(city.gallery || []).flatMap((photo) => [photo.src, photo.thumb])]
         .some((value) => typeof value === "string" && (value.startsWith("data:") || value.startsWith("blob:")))
     );
+    const content = archive?.settings?.content || {};
+    const contentHasImages = ["photography", "thought", "essay"].some((type) => (content[type] || []).some((item) =>
+      [item.image, item.thumb, item.coverImage, item.coverThumb].some((value) => typeof value === "string" && (value.startsWith("data:") || value.startsWith("blob:")))
+    ));
+    return journeyHasImages || contentHasImages;
   }
 
   async function reconcileRemoteAfterLogin() {

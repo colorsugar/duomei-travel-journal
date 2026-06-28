@@ -69,6 +69,40 @@
     };
   }
 
+  function normalizeContentItem(item = {}, type = "thought") {
+    const now = new Date().toISOString().slice(0, 10);
+    const baseTitle = type === "photography" ? "未命名照片" : type === "essay" ? "未命名文章" : "未命名随想";
+    const normalized = {
+      id: item.id || window.ArchiveData.id(type),
+      type,
+      title: cleanText(item.title || baseTitle),
+      published: cleanText(item.published || item.date || now),
+      updated: item.updated || now,
+      place: cleanText(item.place || item.location || ""),
+      category: cleanText(item.category || (type === "essay" ? "Essay" : type === "photography" ? "Photography" : "Thought")),
+      tags: asTags(item.tags || []),
+      body: cleanText(item.body || item.content || item.caption || ""),
+      caption: cleanText(item.caption || item.description || ""),
+      coverImage: item.coverImage || item.image || "",
+      coverThumb: item.coverThumb || item.thumb || "",
+      status: item.status || "public",
+      styles: item.styles || {}
+    };
+    if (type === "photography") {
+      normalized.image = item.image || item.coverImage || "";
+      normalized.thumb = item.thumb || item.coverThumb || "";
+    }
+    return normalized;
+  }
+
+  function normalizeContent(value = {}) {
+    return {
+      photography: Array.isArray(value.photography) ? value.photography.map((item) => normalizeContentItem(item, "photography")) : [],
+      thought: Array.isArray(value.thought) ? value.thought.map((item) => normalizeContentItem(item, "thought")) : [],
+      essay: Array.isArray(value.essay) ? value.essay.map((item) => normalizeContentItem(item, "essay")) : []
+    };
+  }
+
   function normalizeCity(item = {}) {
     const city = {
       ...window.ArchiveData.createCity(
@@ -203,7 +237,8 @@
         language: "zh-CN",
         adminEntryLabel: "编",
         ...(incoming.settings || {}),
-        navItems: normalizeNavItems(incoming.settings?.navItems || base.settings?.navItems)
+        navItems: normalizeNavItems(incoming.settings?.navItems || base.settings?.navItems),
+        content: normalizeContent(incoming.settings?.content || incoming.content || {})
       },
       journeys: journeys.map(normalizeCity),
       notes: Array.isArray(incoming.notes) ? incoming.notes : []

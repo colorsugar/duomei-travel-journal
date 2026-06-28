@@ -73,6 +73,10 @@
     return formValue("cityTags").split(",").map((tag) => tag.trim()).filter(Boolean);
   }
 
+  function simpleTags(value = "") {
+    return [...new Set(String(value).split(/[,，\s]+/).map((tag) => tag.replace(/^#/, "").trim()).filter(Boolean))];
+  }
+
   function renderTagChips(tags) {
     const unique = [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))];
     $("#cityTags").value = unique.join(",");
@@ -383,6 +387,81 @@
     closeDialog($("#cityDialog"));
     window.ArchiveRender.renderApp(state);
     window.ArchiveApp.openCity(city.slug);
+  }
+
+  function contentLabel(type) {
+    return type === "photography" ? "Photography" : type === "essay" ? "Essay" : "Thought";
+  }
+
+  function openContentEditor(state, type = "thought", item = null) {
+    const dialog = $("#contentDialog");
+    if (!dialog) return;
+    $("#contentDialogTitle").textContent = item ? `编辑 ${contentLabel(type)}` : `新增 ${contentLabel(type)}`;
+    $("#contentId").value = item?.id || "";
+    $("#contentType").value = type;
+    $("#contentTitle").value = item?.title || "";
+    $("#contentPublished").value = item?.published || today();
+    $("#contentPlace").value = item?.place || "";
+    $("#contentCategory").value = item?.category || (type === "essay" ? "Essay" : type === "photography" ? "Photography" : "Thought");
+    $("#contentTagsInput").value = (item?.tags || []).join(" ");
+    $("#contentCaption").value = item?.caption || "";
+    $("#contentBody").value = item?.body || "";
+    $("#contentImage").value = "";
+    dialog.dataset.type = type;
+    dialog.querySelector(".content-place-field").hidden = type === "essay";
+    dialog.querySelector(".content-category-field").hidden = type !== "essay";
+    dialog.querySelector(".content-tags-field").hidden = type === "photography";
+    dialog.querySelector(".content-caption-field").hidden = type === "thought" || type === "essay";
+    dialog.querySelector(".content-body-field").hidden = type === "photography";
+    dialog.querySelector(".content-image-field").hidden = type === "thought";
+    openDialog(dialog);
+  }
+
+  async function saveContentDialog(state) {
+    const type = $("#contentType").value || "thought";
+    const content = state.data.settings.content || { photography: [], thought: [], essay: [] };
+    state.data.settings.content = content;
+    content[type] = content[type] || [];
+    const id = $("#contentId").value;
+    const existing = content[type].find((item) => item.id === id);
+    const item = existing || {
+      id: window.ArchiveData.id(type),
+      type,
+      status: "public",
+      styles: {}
+    };
+    item.title = formValue("contentTitle") || (type === "photography" ? "未命名照片" : type === "essay" ? "未命名文章" : "未命名随想");
+    item.published = formValue("contentPublished") || today();
+    item.updated = today();
+    item.place = formValue("contentPlace");
+    item.category = formValue("contentCategory") || contentLabel(type);
+    item.tags = simpleTags($("#contentTagsInput")?.value || "");
+    item.caption = formValue("contentCaption");
+    item.body = formValue("contentBody");
+    const file = filesFrom($("#contentImage"))[0];
+    if (file) {
+      beginUploadProgress([file]);
+      const result = await cropAndTheme(file, (status) => updateUploadProgress(0, 1, file, status), { crop: true });
+      if (result) {
+        if (type === "photography") {
+          item.image = result.image;
+          item.thumb = result.thumb;
+        } else {
+          item.coverImage = result.image;
+          item.coverThumb = result.thumb;
+        }
+        Object.assign(item, result.meta || {});
+        updateUploadProgress(0, 1, file, "已完成", window.ArchiveImage.lastCompression?.outputBytes || 0);
+      }
+      finishUploadProgress();
+    }
+    if (!existing) content[type].push(item);
+    state.data = window.ArchiveStore.normalize(state.data);
+    markDirty(state);
+    window.ArchiveStore.save(state.data);
+    closeDialog($("#contentDialog"));
+    window.ArchiveRender.renderApp(state);
+    window.ArchiveApp.showContent(type);
   }
 
   function saveEditable(state, target) {
@@ -772,6 +851,28 @@
         event.preventDefault();
         await saveCityDialog(state);
       }
+      if (name === "add-content" && isEditing(state)) openContentEditor(state, action.dataset.type || "thought");
+      if (name === "edit-content" && isEditing(state)) {
+        const type = action.dataset.type || "thought";
+        const item = state.data.settings.content?.[type]?.find((entry) => entry.id === action.dataset.id);
+        openContentEditor(state, type, item);
+      }
+      if (name === "delete-content" && isEditing(state)) {
+        const type = action.dataset.type || "thought";
+        const list = state.data.settings.content?.[type] || [];
+        const item = list.find((entry) => entry.id === action.dataset.id);
+        if (item && confirm(`确定删除「${item.title}」吗？`)) {
+          state.data.settings.content[type] = list.filter((entry) => entry.id !== item.id);
+          markDirty(state);
+          window.ArchiveStore.save(state.data);
+          window.ArchiveRender.renderApp(state);
+          window.ArchiveApp.showContent(type);
+        }
+      }
+      if (name === "save-content") {
+        event.preventDefault();
+        await saveContentDialog(state);
+      }
       if (name === "delete-city" && isEditing(state)) deleteCity(state, action.dataset.id);
       if (name === "move-city-up" && isEditing(state)) moveCity(state, action.dataset.id, "up");
       if (name === "move-city-down" && isEditing(state)) moveCity(state, action.dataset.id, "down");
@@ -799,6 +900,11 @@
 
     document.addEventListener("click", (event) => {
       if (event.target.closest(".card-tools, .image-tools, [data-action], [data-upload-card], [data-upload-cover], [data-upload-gallery], [data-add-gallery]")) return;
+      const contentLink = event.target.closest("[data-open-content]");
+      if (contentLink) {
+        window.ArchiveApp.openContent(contentLink.dataset.openContent, contentLink.dataset.id);
+        return;
+      }
       const cityLink = event.target.closest("[data-open-city]");
       if (cityLink) window.ArchiveApp.openCity(cityLink.dataset.openCity);
     });

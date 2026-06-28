@@ -112,6 +112,7 @@
         <h1>灵感</h1>
         <p>这里还没有内容。</p>
       </div>
+      <div id="thoughtList" class="content-grid"></div>
     </section>
 
     <section id="essayView" class="view page-pad channel-view">
@@ -120,6 +121,7 @@
         <h1>文章</h1>
         <p>这里还没有内容。</p>
       </div>
+      <div id="essayList" class="content-grid"></div>
     </section>
   </main>
 
@@ -212,10 +214,11 @@
         <header class="studio-brand">
           <span class="studio-mark">D</span>
           <div><strong>Duomei</strong><small>Travel Studio</small></div>
+          <button id="studioDrawerClose" class="studio-drawer-close" type="button" data-icon="x" aria-label="关闭导航"></button>
         </header>
         <nav class="studio-nav" aria-label="Studio navigation">
           <button class="active" type="button" data-studio-view="studio" data-icon="house"><span>工作室</span></button>
-          <button type="button" data-studio-view="journey" data-icon="compass"><span>旅程</span></button>
+          <button type="button" data-studio-view="journey" data-icon="compass"><span>内容</span></button>
           <button type="button" data-studio-view="media" data-icon="image"><span>媒体</span></button>
           <button type="button" data-studio-view="home" data-icon="layout"><span>首页</span></button>
           <button type="button" data-studio-view="repository" data-icon="archive"><span>存储库</span></button>
@@ -317,6 +320,31 @@
       <footer class="dialog-actions">
         <button class="pill" value="cancel">取消</button>
         <button class="pill primary" value="default" data-action="save-city">保存</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="contentDialog" class="dialog content-dialog">
+    <form method="dialog" class="dialog-card">
+      <header class="dialog-head">
+        <h2 id="contentDialogTitle">新增内容</h2>
+        <button class="dialog-close" value="cancel" aria-label="关闭">×</button>
+      </header>
+      <input id="contentId" type="hidden">
+      <input id="contentType" type="hidden">
+      <div class="form-grid">
+        <label>标题<input id="contentTitle" required></label>
+        <label>日期<input id="contentPublished" placeholder="2026.06.28"></label>
+        <label class="content-place-field">地点<input id="contentPlace" placeholder="eg. Osaka, Japan"></label>
+        <label class="content-category-field">分类<input id="contentCategory" placeholder="eg. Essay"></label>
+        <label class="wide content-tags-field">Tag<input id="contentTagsInput" placeholder="输入后按 Enter / 空格 / 逗号添加标签"></label>
+        <label class="wide content-caption-field">说明<textarea id="contentCaption" rows="3"></textarea></label>
+        <label class="wide content-body-field">正文<textarea id="contentBody" rows="7"></textarea></label>
+        <label class="content-image-field">图片 / 封面<input id="contentImage" type="file" accept="image/*"></label>
+      </div>
+      <footer class="dialog-actions">
+        <button class="pill" value="cancel">取消</button>
+        <button class="pill primary" value="default" data-action="save-content">保存</button>
       </footer>
     </form>
   </dialog>

@@ -163,6 +163,10 @@ function replaceImageValue(value, pathHint, uploads) {
   return publicUploadPath(repoPath);
 }
 
+function imagePrefix(value, fallback = "content") {
+  return String(value || fallback).replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+}
+
 function migrateImages(archive) {
   const uploads = [];
   const next = JSON.parse(JSON.stringify(archive));
@@ -177,6 +181,16 @@ function migrateImages(archive) {
       photo.src = replaceImageValue(photo.src || photo.image, photoPrefix, uploads);
       delete photo.image;
       photo.thumb = replaceImageValue(photo.thumb, `${photoPrefix}-thumb`, uploads);
+    }
+  }
+  const content = next.settings?.content || {};
+  for (const type of ["photography", "thought", "essay"]) {
+    for (const item of content[type] || []) {
+      const prefix = `${type}-${imagePrefix(item.id || item.title, "item")}`;
+      item.image = replaceImageValue(item.image, `${prefix}-image`, uploads);
+      item.thumb = replaceImageValue(item.thumb, `${prefix}-thumb`, uploads);
+      item.coverImage = replaceImageValue(item.coverImage, `${prefix}-cover`, uploads);
+      item.coverThumb = replaceImageValue(item.coverThumb, `${prefix}-cover-thumb`, uploads);
     }
   }
   return { archive: next, uploads };

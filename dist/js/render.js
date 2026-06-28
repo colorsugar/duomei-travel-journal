@@ -316,7 +316,9 @@
   }
 
   function renderStats(state) {
-    const publicJourneys = state.data.journeys.filter((city) => city.status !== "asset");
+    const publicJourneys = state.data.journeys.filter((city) => city.status !== "asset" && city.status !== "draft");
+    const content = state.data.settings?.content || {};
+    const publishedContent = ["photography", "thought", "essay"].flatMap((type) => (content[type] || []).filter((item) => item.status !== "draft"));
     const cities = publicJourneys.length;
     const photos = publicJourneys.reduce((sum, city) => sum + city.gallery.filter((photo) => photo.src || photo.image || photo.thumb).length, 0);
     const tags = new Set(publicJourneys.flatMap((city) => city.tags || [])).size;
@@ -327,11 +329,90 @@
     stats.innerHTML = [
       ["城市", cities],
       ["照片", photos],
-      ["文章", cities],
+      ["内容", cities + publishedContent.length],
       ["Tag", tags],
       ["总浏览", views],
       ["最常翻阅", top?.title || "-"]
     ].map(([label, value]) => `<div class="stat-card reveal"><strong>${esc(value)}</strong><span>${esc(label)}</span></div>`).join("");
+  }
+
+  function contentImage(item = {}) {
+    return item.thumb || item.coverThumb || item.image || item.coverImage || "";
+  }
+
+  function renderContentList(state, type) {
+    const root = type === "photography"
+      ? $("#channelGalleryGrid")
+      : type === "thought"
+        ? $("#thoughtList")
+        : $("#essayList");
+    if (!root) return;
+    const list = (state.data.settings?.content?.[type] || [])
+      .filter((item) => item.status !== "draft" || state.editMode)
+      .filter((item) => type !== "photography" || state.editMode || contentImage(item));
+    const label = type === "photography" ? "Photography" : type === "essay" ? "Essay" : "Thought";
+    if (!list.length) {
+      root.innerHTML = `<div class="empty-channel">这里还没有 ${esc(label)} 内容。</div><button class="add-card reveal edit-only" data-action="add-content" data-type="${esc(type)}">＋<br><span>新增${esc(label)}</span></button>`;
+      return;
+    }
+    root.innerHTML = list.map((item, index) => {
+      const image = contentImage(item);
+      const media = image
+        ? `<div class="photo" data-open-content="${esc(type)}" data-id="${esc(item.id)}"><img src="${image}" alt="${esc(item.title)}"></div>`
+        : `<div class="photo placeholder-photo" data-open-content="${esc(type)}" data-id="${esc(item.id)}"><span>${esc(item.title.slice(0, 1) || label.slice(0, 1))}</span></div>`;
+      return `<article class="content-card gallery-item reveal">
+        <div class="card-tools edit-only">
+          <button class="icon-btn" data-action="edit-content" data-type="${esc(type)}" data-id="${esc(item.id)}">编辑</button>
+          <button class="icon-btn" data-action="delete-content" data-type="${esc(type)}" data-id="${esc(item.id)}">删除</button>
+        </div>
+        ${media}
+        <div class="photo-copy">
+          <p class="section-kicker">${esc(label)}</p>
+          <h3>${esc(item.title)}</h3>
+          <p>${esc(item.caption || item.body || item.place || item.category || "")}</p>
+          <small>${esc([item.published, item.place || item.category].filter(Boolean).join(" · "))}</small>
+        </div>
+      </article>`;
+    }).join("") + `<button class="add-card reveal edit-only" data-action="add-content" data-type="${esc(type)}">＋<br><span>新增${esc(label)}</span></button>`;
+  }
+
+  function renderContentDetail(state, type, id) {
+    const content = state.data.settings?.content || {};
+    const item = (content[type] || []).find((entry) => entry.id === id);
+    if (!item) {
+      $("#detailView").innerHTML = `<section class="reading"><h1>内容不存在</h1><p>这条内容可能已经被删除或尚未发布。</p><button class="pill" data-view="${type === "photography" ? "gallery" : type}">返回列表</button></section>`;
+      return;
+    }
+    if (type === "photography" && !contentImage(item)) {
+      $("#detailView").innerHTML = `<section class="reading"><h1>照片还没有上传</h1><p>这条摄影内容暂时没有可显示的图片。</p><button class="pill" data-view="gallery">返回摄影</button></section>`;
+      return;
+    }
+    const typeLabel = type === "photography" ? "Photography" : type === "essay" ? "Essay" : "Thought";
+    $("#detailView").innerHTML = `
+      <section class="detail-hero content-detail-hero">
+        ${imageBlock({
+          image: item.image || item.coverImage,
+          thumb: item.thumb || item.coverThumb,
+          background: "linear-gradient(135deg,#edf3f1,#f8f4eb)",
+          className: "detail-cover",
+          alt: item.title
+        })}
+        <div class="detail-copy">
+          <button class="back" data-view="${type === "photography" ? "gallery" : type}">Back</button>
+          <p class="section-kicker">${esc(typeLabel)}</p>
+          <h1 class="detail-title">${esc(item.title)}</h1>
+          <p class="detail-line">${esc(item.caption || item.body || "")}</p>
+          <div class="detail-meta">
+            <span>${esc(item.published || "")}</span>
+            <span>${esc(item.place || item.category || "")}</span>
+            ${(item.tags || []).map((tag) => `<button class="tag-pill">#${esc(tag)}</button>`).join("")}
+          </div>
+        </div>
+      </section>
+      <section class="reading"><div class="prose">${lines(item.body || item.caption || "")}</div></section>
+    `;
+    setEditable(state.editMode);
+    requestAnimationFrame(() => window.ArchiveFX?.observe());
   }
 
   function setEditable(enabled) {
@@ -355,5 +436,5 @@
     }
   }
 
-  window.ArchiveRender = { renderApp, renderHomeSections, renderJourney, renderDetail, renderTags, renderStats, setEditable, imageLoaded, editable };
+  window.ArchiveRender = { renderApp, renderHomeSections, renderJourney, renderDetail, renderContentDetail, renderContentList, renderTags, renderStats, setEditable, imageLoaded, editable };
 })();

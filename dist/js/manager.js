@@ -4,7 +4,7 @@
   const BACKUPS = "backups";
   let recoveryTimer = 0;
   let pendingRecovery = null;
-  let studioState = { view: "studio", scrollTop: 0 };
+  let studioState = { view: "studio", scrollTop: 0, contentType: "travel" };
   const ICONS = {
     house: '<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
     compass: '<circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5z"/>',
@@ -29,6 +29,13 @@
       if (!node.querySelector(".studio-icon")) node.insertAdjacentHTML("afterbegin", icon(node.dataset.icon));
     });
   }
+
+  const CONTENT_META = {
+    travel: { label: "游", title: "Travel", add: "新增旅行", view: "journey" },
+    photography: { label: "景", title: "Photography", add: "新增照片", view: "gallery" },
+    thought: { label: "想", title: "Thought", add: "新增随想", view: "thought" },
+    essay: { label: "文", title: "Essay", add: "新增文章", view: "essay" }
+  };
 
   function openDatabase() {
     return new Promise((resolve, reject) => {
@@ -108,7 +115,7 @@
   }
 
   function photos(data) {
-    return data.journeys.flatMap((city) => {
+    const journeyPhotos = data.journeys.flatMap((city) => {
       const cityPhotos = [];
       if (city.coverImage) cityPhotos.push({
         type: city.status === "asset" ? "Home Hero" : city.cardImage === city.coverImage ? "Cover · Card" : "Cover",
@@ -133,6 +140,15 @@
       });
       return cityPhotos;
     });
+    const content = data.settings?.content || {};
+    const contentPhotos = ["photography", "thought", "essay"].flatMap((type) => (content[type] || []).flatMap((item) => {
+      const label = type === "photography" ? "Photography" : type === "thought" ? "Thought" : "Essay";
+      const list = [];
+      if (item.image) list.push({ type: label, city: item.title || label, cityId: item.id, slug: item.id, src: item.image, thumb: item.thumb, references: 1, uploadedAt: item.updated, width: item.width, height: item.height, outputBytes: item.outputBytes, originalBytes: item.originalBytes });
+      if (item.coverImage) list.push({ type: `${label} Cover`, city: item.title || label, cityId: item.id, slug: item.id, src: item.coverImage, thumb: item.coverThumb, references: 1, uploadedAt: item.updated, width: item.width, height: item.height, outputBytes: item.outputBytes, originalBytes: item.originalBytes });
+      return list;
+    }));
+    return journeyPhotos.concat(contentPhotos);
   }
 
   function bytes(value) {
@@ -206,14 +222,24 @@
     return ["欢迎回来，多美。", "愿今天也留下值得珍藏的一页。"];
   }
 
-  function firstPublishDate(journeys) {
-    const dates = journeys.map((city) => {
-      const raw = String(city.published || "").replace(/\./g, "-");
+  function parsePublishTime(value) {
+    const raw = String(value || "").trim().replace(/\./g, "-").replace(/\//g, "-");
+    if (!raw) return null;
+    const normalized = /^\d{4}-\d{2}$/.test(raw) ? `${raw}-01` : /^\d{4}$/.test(raw) ? `${raw}-01-01` : raw;
+    const time = new Date(normalized).getTime();
+    return Number.isFinite(time) ? time : null;
+  }
+
+  function firstPublishDate(data) {
+    const content = data.settings?.content || {};
+    const contentItems = ["photography", "thought", "essay"].flatMap((type) => content[type] || []);
+    const dates = data.journeys.filter((city) => city.status !== "asset" && city.status !== "draft").concat(contentItems.filter((item) => item.status !== "draft")).map((item) => {
+      const raw = String(item.published || "").replace(/\./g, "-");
       const normalized = /^\d{4}-\d{2}$/.test(raw) ? `${raw}-01` : raw;
       const value = new Date(normalized).getTime();
-      return Number.isFinite(value) ? value : null;
+      return Number.isFinite(value) ? value : parsePublishTime(item.updated);
     }).filter(Boolean);
-    return dates.length ? Math.min(...dates) : Date.now();
+    return dates.length ? Math.min(...dates) : null;
   }
 
   function relativeTime(value) {
@@ -299,7 +325,10 @@
     const [greeting, line] = welcomeCopy();
     document.getElementById("studioGreeting").textContent = greeting;
     document.getElementById("studioWelcomeLine").textContent = line;
-    animateNumber(document.getElementById("daysSincePublish"), Math.max(0, Math.floor((Date.now() - firstPublishDate(data.journeys)) / 86400000)));
+    const firstPublish = firstPublishDate(data);
+    const daysElement = document.getElementById("daysSincePublish");
+    if (firstPublish) animateNumber(daysElement, Math.max(0, Math.floor((Date.now() - firstPublish) / 86400000)));
+    else if (daysElement) daysElement.textContent = "--";
     animateNumber(document.getElementById("welcomeJourneys"), publicJourneys.length);
     animateNumber(document.getElementById("welcomePhotos"), info.media.length);
   }
@@ -314,16 +343,25 @@
     info.average = info.sizes.length ? Math.round(info.sizes.reduce((a, b) => a + b, 0) / info.sizes.length) : 0;
     panel.hidden = false;
     if (type === "journey") {
-      const journeys = data.journeys.filter((city) => city.status !== "asset");
-      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Content Manager</span><h2>内容</h2><p>管理「游 / 景 / 想 / 文」四个频道的内容。</p></div><button class="pill edit-only" data-action="add-city">新增旅行</button></header>
-        <div class="content-tabs"><button class="active" type="button">游</button><button type="button" disabled>景</button><button type="button" disabled>想</button><button type="button" disabled>文</button></div>
-        <div class="studio-journey-list">${journeys.map((city, index) => `<article>
+      const activeType = studioState.contentType || "travel";
+      const meta = CONTENT_META[activeType] || CONTENT_META.travel;
+      const content = data.settings.content || {};
+      const list = activeType === "travel" ? data.journeys.filter((city) => city.status !== "asset") : (content[activeType] || []);
+      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Content Manager</span><h2>内容</h2><p>管理「游 / 景 / 想 / 文」四个频道的内容。</p></div><button class="pill edit-only" data-action="${activeType === "travel" ? "add-city" : "add-content"}" ${activeType === "travel" ? "" : `data-type="${activeType}"`}>${meta.add}</button></header>
+        <div class="content-tabs">${Object.entries(CONTENT_META).map(([key, item]) => `<button class="${key === activeType ? "active" : ""}" type="button" data-content-tab="${key}">${item.label}<span>${item.title}</span></button>`).join("")}</div>
+        <div class="studio-journey-list">${list.map((item, index) => activeType === "travel" ? `<article draggable="true" data-drag-city="${item.id}">
           <span class="journey-index">${String(index + 1).padStart(2, "0")}</span>
-          <div class="journey-preview">${city.cardImage || city.coverImage ? `<img src="${city.cardThumb || city.coverThumb || city.cardImage || city.coverImage}" alt="">` : ""}</div>
-          <div><strong>${city.title}</strong><span>${city.place || "未填写地点"} · ${city.published || "未填写日期"}</span><small>${(city.gallery || []).filter((photo) => photo.src).length} 张照片 · ${(city.tags || []).length} 个标签</small></div>
-          <span class="visibility-badge ${city.status === "public" ? "visible" : "hidden"}">${city.status === "public" ? "公开" : city.status === "draft" ? "草稿" : city.status || "未设置"}</span>
-          <div class="journey-row-actions"><button type="button" data-journey-view="${city.slug}">预览</button><button class="edit-only" type="button" data-action="edit-city" data-id="${city.id}">编辑</button></div>
-        </article>`).join("") || "<p>还没有 Journey。</p>"}</div>`;
+          <div class="journey-preview">${item.cardImage || item.coverImage ? `<img src="${item.cardThumb || item.coverThumb || item.cardImage || item.coverImage}" alt="">` : ""}</div>
+          <div><strong>${item.title}</strong><span>${item.place || "未填写地点"} · ${item.published || "未填写日期"}</span><small>${(item.gallery || []).filter((photo) => photo.src).length} 张照片 · ${(item.tags || []).length} 个标签</small></div>
+          <span class="visibility-badge ${item.status === "public" ? "visible" : "hidden"}">${item.status === "public" ? "公开" : item.status === "draft" ? "草稿" : item.status || "未设置"}</span>
+          <div class="journey-row-actions"><button type="button" data-journey-view="${item.slug}">预览</button><button class="edit-only" type="button" data-action="edit-city" data-id="${item.id}">编辑</button></div>
+        </article>` : `<article draggable="true" data-drag-content="${item.id}" data-type="${activeType}">
+          <span class="journey-index">${String(index + 1).padStart(2, "0")}</span>
+          <div class="journey-preview">${item.thumb || item.coverThumb || item.image || item.coverImage ? `<img src="${item.thumb || item.coverThumb || item.image || item.coverImage}" alt="">` : ""}</div>
+          <div><strong>${item.title}</strong><span>${item.place || item.category || "未填写"} · ${item.published || "未填写日期"}</span><small>${(item.tags || []).length} 个标签 · ${item.status || "public"}</small></div>
+          <span class="visibility-badge ${item.status === "public" ? "visible" : "hidden"}">${item.status === "public" ? "公开" : "草稿"}</span>
+          <div class="journey-row-actions"><button type="button" data-content-preview="${item.id}" data-type="${activeType}">预览</button><button class="edit-only" type="button" data-action="edit-content" data-type="${activeType}" data-id="${item.id}">编辑</button></div>
+        </article>`).join("") || `<p>还没有 ${meta.title}。</p>`}</div>`;
     }
     if (type === "media") {
       panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">媒体库</span><h2>图片管理</h2><p>${info.media.length} 张已引用图片，${info.pending} 张等待发布，${info.emptySlots} 个空槽位。</p></div>
@@ -577,7 +615,7 @@
     }));
     await refreshDashboard();
     const active = document.querySelector("[data-studio-view].active")?.dataset.studioView;
-    if (active && active !== "studio" && active !== "journey") await renderPanel(active);
+    if (active && active !== "studio") await renderPanel(active);
   }
 
   function openDashboard() {
@@ -670,6 +708,9 @@
     document.getElementById("studioMenu")?.addEventListener("click", () => {
       document.querySelector(".studio-shell")?.classList.toggle("sidebar-open");
     });
+    document.getElementById("studioDrawerClose")?.addEventListener("click", () => {
+      document.querySelector(".studio-shell")?.classList.remove("sidebar-open");
+    });
     document.addEventListener("click", async (event) => {
       const shell = document.querySelector(".studio-shell");
       if (shell?.classList.contains("sidebar-open") && !event.target.closest(".studio-sidebar, #studioMenu")) {
@@ -693,6 +734,24 @@
       }
       const panel = event.target.closest("[data-admin-panel]");
       if (panel) await renderPanel(panel.dataset.adminPanel);
+      const contentTab = event.target.closest("[data-content-tab]");
+      if (contentTab) {
+        studioState.contentType = contentTab.dataset.contentTab || "travel";
+        await renderPanel("journey");
+        return;
+      }
+      const journeyView = event.target.closest("[data-journey-view]");
+      if (journeyView) {
+        closeDashboard();
+        window.ArchiveApp.openCity(journeyView.dataset.journeyView);
+        return;
+      }
+      const contentPreview = event.target.closest("[data-content-preview]");
+      if (contentPreview) {
+        closeDashboard();
+        window.ArchiveApp.openContent(contentPreview.dataset.type, contentPreview.dataset.contentPreview);
+        return;
+      }
       const restore = event.target.closest("[data-restore-backup]");
       if (restore) {
         const record = (await backups()).find((item) => String(item.id) === restore.dataset.restoreBackup);
@@ -786,11 +845,6 @@
         if (event.target.dataset.homeButtonUrl) section.buttonUrl = event.target.value;
         window.ArchiveApp.state.hasUnpublishedChanges = true;
         window.ArchiveStore.save(window.ArchiveApp.state.data, true);
-      }
-      const journeyView = event.target.closest("[data-journey-view]");
-      if (journeyView) {
-        closeDashboard();
-        window.ArchiveApp.openCity(journeyView.dataset.journeyView);
       }
       const heroKey = event.target.dataset.heroSetting;
       if (heroKey) {
