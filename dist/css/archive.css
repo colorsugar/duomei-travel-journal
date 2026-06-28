@@ -1841,3 +1841,563 @@ body.studio-open { overflow: hidden; }
     padding-inline: 16px !important;
   }
 }
+
+/* V5.3.3 P0 global color and contrast system */
+:root {
+  color-scheme: light;
+  --text-primary-light: #2f332f;
+  --text-secondary-light: #687069;
+  --text-tertiary-light: #8b9189;
+  --text-inverse-light: #fffaf2;
+  --text-primary-dark: #f5f7f4;
+  --text-secondary-dark: rgba(245,247,244,.78);
+  --text-tertiary-dark: rgba(245,247,244,.58);
+  --surface-light: #fffaf2;
+  --surface-raised-light: #fffdf8;
+  --surface-soft-light: #f6f2e9;
+  --surface-dark: #1f2421;
+  --surface-raised-dark: #2a302c;
+  --glass-light: rgba(255,250,242,.86);
+  --glass-strong-light: rgba(255,253,248,.94);
+  --glass-dark: rgba(31,36,33,.72);
+  --glass-strong-dark: rgba(31,36,33,.88);
+  --border-light: rgba(47,51,47,.16);
+  --border-strong-light: rgba(47,51,47,.28);
+  --border-dark: rgba(245,247,244,.18);
+  --border-strong-dark: rgba(245,247,244,.32);
+  --placeholder-light: rgba(47,51,47,.48);
+  --placeholder-dark: rgba(245,247,244,.56);
+  --focus-ring: rgba(104,132,143,.38);
+  --danger-text: #8e4f4a;
+  --warning-text: #76592f;
+  --success-text: #4f7468;
+  --info-text: #526f81;
+  --image-overlay-dark: linear-gradient(180deg, rgba(20,24,22,.16), rgba(20,24,22,.72));
+  --image-overlay-readable: linear-gradient(90deg, rgba(17,20,19,.78) 0%, rgba(17,20,19,.46) 42%, rgba(17,20,19,.12) 76%);
+  --ink: var(--text-primary-light);
+  --muted: var(--text-secondary-light);
+  --cream: var(--surface-light);
+  --paper: var(--surface-soft-light);
+  --line: var(--border-light);
+}
+
+body[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: var(--text-primary-dark);
+  --muted: var(--text-secondary-dark);
+  --cream: var(--surface-raised-dark);
+  --paper: var(--surface-dark);
+  --line: var(--border-dark);
+}
+
+body,
+.view,
+.page-pad,
+.journey-section,
+.home-section,
+.reading,
+.prose,
+.map-note,
+.footer {
+  color: var(--ink);
+}
+
+.muted,
+.section-description,
+.site-subtitle,
+.site-poem,
+.page-title p,
+.prose,
+.gallery-caption,
+.photo-meta,
+.photo-notes,
+.card-meta,
+.content-card p,
+.content-card-meta,
+.footer {
+  color: var(--muted) !important;
+}
+
+button,
+.pill,
+.icon-btn,
+.dashboard-action,
+.studio-command,
+.media-card-actions button,
+.journey-row-actions button,
+.home-manager-actions button,
+.recovery-actions button,
+.empty-search button,
+.pager button,
+.result-list button {
+  color: var(--ink);
+}
+
+.pill,
+.icon-btn,
+.add-card,
+.add-photo,
+.search-chip,
+.result-list button,
+.pager button,
+.map-note,
+.stat-card,
+.tag-bubble,
+.home-section-button,
+.float-panel button,
+.toast,
+.upload-progress,
+.filmstrip,
+.text-toolbar {
+  background: var(--glass-light) !important;
+  border-color: var(--border-light) !important;
+  color: var(--ink) !important;
+}
+
+.pill:hover,
+.pill.primary,
+.dashboard-action.primary,
+.content-tabs button.active,
+.studio-command.primary,
+.tag-chip,
+.tag-suggestions button:hover {
+  color: var(--text-primary-light) !important;
+  background: color-mix(in srgb, var(--accent) 72%, white) !important;
+  border-color: var(--border-strong-light) !important;
+}
+
+input,
+textarea,
+select,
+option,
+.dialog-card input,
+.dialog-card textarea,
+.dialog-card select,
+.text-toolbar select,
+.text-toolbar input,
+.search-wrap input,
+.studio-shell input,
+.studio-shell textarea,
+.studio-shell select,
+.studio-search input,
+.hero-setting-grid input:not([type="checkbox"]):not([type="range"]),
+.hero-setting-grid select,
+.hero-setting-grid textarea,
+.settings-grid select,
+.crop-aspect-label select {
+  background: var(--surface-raised-light) !important;
+  border: 1px solid var(--border-light) !important;
+  color: var(--text-primary-light) !important;
+  -webkit-text-fill-color: var(--text-primary-light);
+}
+
+input::placeholder,
+textarea::placeholder,
+.search-wrap input::placeholder,
+.dialog-card input::placeholder,
+.dialog-card textarea::placeholder,
+.studio-shell input::placeholder,
+.studio-shell textarea::placeholder {
+  color: var(--placeholder-light) !important;
+  -webkit-text-fill-color: var(--placeholder-light);
+  opacity: 1 !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus-visible,
+.pill:focus-visible,
+.icon-btn:focus-visible,
+.studio-command:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px var(--focus-ring) !important;
+  border-color: var(--border-strong-light) !important;
+}
+
+.dialog-card,
+#adminDialog .dialog-card,
+#cityDialog .dialog-card,
+#contentDialog .dialog-card {
+  background: var(--glass-strong-light) !important;
+  color: var(--text-primary-light) !important;
+  border-color: var(--border-light) !important;
+}
+
+.dialog-card h2,
+.dialog-card h3,
+.dialog-card strong,
+.dialog-card label,
+.admin-field,
+.form-grid label,
+.content-tags-field,
+.crop-controls,
+.crop-aspect-label {
+  color: var(--text-primary-light) !important;
+}
+
+.dialog-card p,
+.admin-note,
+.dialog-card small,
+.tag-suggestions > span {
+  color: var(--text-secondary-light) !important;
+}
+
+.dialog-close,
+.studio-drawer-close,
+.recovery-preview > button {
+  background: var(--surface-raised-light) !important;
+  color: var(--text-primary-light) !important;
+  border-color: var(--border-light) !important;
+}
+
+.topbar {
+  background: color-mix(in srgb, var(--surface-light) 88%, transparent) !important;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary-light);
+}
+
+.brand {
+  color: var(--text-primary-light) !important;
+  text-shadow: none !important;
+}
+
+body:not(.studio-open) .hero[data-hero-mode="image"]::after,
+body:not(.studio-open) .hero.has-background::after {
+  opacity: 1 !important;
+  background: var(--image-overlay-readable), var(--image-overlay-dark) !important;
+}
+
+body:not(.studio-open) .hero-copy,
+body:not(.studio-open) .hero-copy *,
+body:not(.studio-open) .hero-featured button,
+body:not(.studio-open) .hero-featured blockquote {
+  position: relative;
+  z-index: 2;
+}
+
+body:not(.studio-open) .hero[data-hero-mode="image"] .site-title,
+body:not(.studio-open) .hero.has-background .site-title,
+body:not(.studio-open) .hero[data-hero-mode="image"] .site-subtitle,
+body:not(.studio-open) .hero.has-background .site-subtitle,
+body:not(.studio-open) .hero[data-hero-mode="image"] .site-poem,
+body:not(.studio-open) .hero.has-background .site-poem {
+  color: var(--text-primary-dark) !important;
+  text-shadow: 0 10px 34px rgba(0,0,0,.46) !important;
+}
+
+body:not(.studio-open) .hero:not([data-hero-mode="image"]):not(.has-background) .site-title {
+  color: var(--text-primary-light) !important;
+  text-shadow: none !important;
+}
+
+body:not(.studio-open) .hero-featured button,
+body:not(.studio-open) .hero-featured blockquote {
+  background: var(--glass-light) !important;
+  color: var(--text-primary-light) !important;
+  border-color: var(--border-light) !important;
+}
+
+body:not(.studio-open) .hero[data-hero-mode="image"] .hero-featured button,
+body:not(.studio-open) .hero.has-background .hero-featured button,
+body:not(.studio-open) .hero[data-hero-mode="image"] .hero-featured blockquote,
+body:not(.studio-open) .hero.has-background .hero-featured blockquote {
+  background: var(--glass-dark) !important;
+  color: var(--text-primary-dark) !important;
+  border-color: var(--border-dark) !important;
+}
+
+body:not(.studio-open) .hero[data-hero-mode="image"] .hero-featured span,
+body:not(.studio-open) .hero.has-background .hero-featured span,
+body:not(.studio-open) .hero[data-hero-mode="image"] .hero-featured small,
+body:not(.studio-open) .hero.has-background .hero-featured small,
+body:not(.studio-open) .hero[data-hero-mode="image"] .hero-featured cite,
+body:not(.studio-open) .hero.has-background .hero-featured cite {
+  color: var(--text-secondary-dark) !important;
+}
+
+.photo::after,
+.detail-cover::after {
+  opacity: 1;
+  background: var(--image-overlay-dark) !important;
+}
+
+.card-title-float,
+.detail-copy,
+.detail-copy *,
+.back,
+.tag-pill,
+.lightbox-close,
+.lightbox-nav,
+.lightbox-back,
+#lightboxCaption,
+.lightbox-counter,
+.lightbox-error,
+.notification-center,
+.notification-center *,
+.notification-taxonomy span {
+  color: var(--text-primary-dark) !important;
+}
+
+.detail-meta span,
+.tag-pill,
+.lightbox-close,
+.lightbox-nav,
+.lightbox-back,
+.notification-taxonomy span {
+  border-color: var(--border-dark) !important;
+}
+
+.lightbox,
+.notification-center {
+  background: var(--glass-strong-dark) !important;
+}
+
+.notification-center button,
+.notification-bell,
+.notification-item {
+  color: var(--text-primary-dark) !important;
+}
+
+.notification-item p,
+.notification-item small,
+.notification-empty {
+  color: var(--text-secondary-dark) !important;
+}
+
+.studio-shell {
+  --studio-bg: #f4f5f3;
+  --studio-surface: var(--glass-light);
+  --studio-panel: var(--surface-raised-light);
+  --studio-line: var(--border-light);
+  --studio-text: var(--text-primary-light);
+  --studio-muted: var(--text-secondary-light);
+  color: var(--studio-text) !important;
+  background: var(--studio-bg) !important;
+}
+
+.studio-shell *,
+.studio-shell button,
+.studio-shell strong,
+.studio-shell h2,
+.studio-shell h3,
+.studio-view-title,
+#studioViewTitle {
+  color: var(--studio-text);
+}
+
+.studio-shell p,
+.studio-shell span,
+.studio-shell small,
+.studio-brand small,
+.studio-toolbar span,
+.panel-heading p,
+.settings-list section > div span,
+.studio-journey-list article > div:nth-child(3) span,
+.studio-journey-list article > div:nth-child(3) small,
+.media-facts dt,
+.dashboard-action span,
+.studio-publish-card p,
+.repository-hero small,
+.health-detail p,
+.recovery-meta,
+.home-manager-list article > div:nth-child(2) span {
+  color: var(--studio-muted) !important;
+}
+
+.studio-sidebar,
+.studio-toolbar,
+.dashboard-tile,
+.dashboard-metrics section,
+.media-manager-grid article,
+.repository-hero,
+.health-detail,
+.hero-settings,
+.settings-list section,
+.home-manager-list article,
+.recovery-preview,
+.media-batch,
+.content-tabs button,
+.studio-search input,
+.journey-row-actions button,
+.home-manager-actions button,
+.recovery-actions button,
+.media-card-actions button,
+.hero-upload,
+.studio-open-home {
+  background: var(--studio-surface) !important;
+  border-color: var(--studio-line) !important;
+  color: var(--studio-text) !important;
+}
+
+.studio-nav button,
+.studio-sidebar footer button,
+.studio-command {
+  color: var(--studio-muted) !important;
+}
+
+.studio-nav button:hover,
+.studio-nav button.active,
+.studio-sidebar footer button:hover,
+.studio-command.primary {
+  color: var(--studio-text) !important;
+  background: color-mix(in srgb, var(--studio-blue) 16%, white) !important;
+}
+
+.sync-badge.synced,
+.sync-badge.published,
+.visibility-badge.visible {
+  color: var(--success-text) !important;
+  background: color-mix(in srgb, var(--success-text) 14%, white) !important;
+}
+
+.sync-badge.pending,
+.sync-badge.waiting {
+  color: var(--warning-text) !important;
+  background: color-mix(in srgb, var(--warning-text) 13%, white) !important;
+}
+
+.media-card-actions button.danger,
+.media-batch button.danger,
+.pill.danger,
+.upload-progress-items [data-status="failed"] {
+  color: var(--danger-text) !important;
+}
+
+.crop-stage {
+  background: #151716 !important;
+}
+
+.crop-frame {
+  border-color: rgba(255,255,255,.92) !important;
+  box-shadow: 0 0 0 999px rgba(0,0,0,.46) !important;
+}
+
+.crop-frame span {
+  border-color: rgba(255,255,255,.42) !important;
+}
+
+.editor-action-dock,
+.edit-action-bar {
+  background: var(--glass-strong-light) !important;
+  border-color: var(--border-light) !important;
+}
+
+.editor-action-dock .edit-toggle,
+.editor-action-dock .quick-add,
+.editor-action-dock .publish-toggle,
+.edit-action-bar button {
+  background: var(--surface-raised-light) !important;
+  color: var(--text-primary-light) !important;
+  border-color: var(--border-light) !important;
+}
+
+body[data-theme="dark"] input,
+body[data-theme="dark"] textarea,
+body[data-theme="dark"] select,
+body[data-theme="dark"] option,
+body[data-theme="dark"] .dialog-card {
+  background: var(--surface-raised-dark) !important;
+  border-color: var(--border-dark) !important;
+  color: var(--text-primary-dark) !important;
+  -webkit-text-fill-color: var(--text-primary-dark);
+}
+
+body[data-theme="dark"] input::placeholder,
+body[data-theme="dark"] textarea::placeholder {
+  color: var(--placeholder-dark) !important;
+  -webkit-text-fill-color: var(--placeholder-dark);
+}
+
+body[data-theme="dark"] .studio-shell {
+  --studio-bg: #202422;
+  --studio-surface: var(--glass-dark);
+  --studio-panel: var(--surface-raised-dark);
+  --studio-line: var(--border-dark);
+  --studio-text: var(--text-primary-dark);
+  --studio-muted: var(--text-secondary-dark);
+}
+
+body[data-theme="dark"] .topbar,
+body[data-theme="dark"] .pill,
+body[data-theme="dark"] .icon-btn,
+body[data-theme="dark"] .editor-action-dock,
+body[data-theme="dark"] .edit-action-bar {
+  background: var(--glass-dark) !important;
+  border-color: var(--border-dark) !important;
+  color: var(--text-primary-dark) !important;
+}
+
+body[data-theme="dark"] .brand,
+body[data-theme="dark"] .topbar .pill,
+body[data-theme="dark"] #adminEntry {
+  color: var(--text-primary-dark) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  body[data-theme="auto"] {
+    color-scheme: dark;
+    --ink: var(--text-primary-dark);
+    --muted: var(--text-secondary-dark);
+    --cream: var(--surface-raised-dark);
+    --paper: var(--surface-dark);
+    --line: var(--border-dark);
+  }
+  body[data-theme="auto"] input,
+  body[data-theme="auto"] textarea,
+  body[data-theme="auto"] select,
+  body[data-theme="auto"] option,
+  body[data-theme="auto"] .dialog-card {
+    background: var(--surface-raised-dark) !important;
+    border-color: var(--border-dark) !important;
+    color: var(--text-primary-dark) !important;
+    -webkit-text-fill-color: var(--text-primary-dark);
+  }
+  body[data-theme="auto"] input::placeholder,
+  body[data-theme="auto"] textarea::placeholder {
+    color: var(--placeholder-dark) !important;
+    -webkit-text-fill-color: var(--placeholder-dark);
+  }
+  body[data-theme="auto"] .studio-shell {
+    --studio-bg: #202422;
+    --studio-surface: var(--glass-dark);
+    --studio-panel: var(--surface-raised-dark);
+    --studio-line: var(--border-dark);
+    --studio-text: var(--text-primary-dark);
+    --studio-muted: var(--text-secondary-dark);
+  }
+  body[data-theme="auto"] .topbar,
+  body[data-theme="auto"] .pill,
+  body[data-theme="auto"] .icon-btn,
+  body[data-theme="auto"] .editor-action-dock,
+  body[data-theme="auto"] .edit-action-bar {
+    background: var(--glass-dark) !important;
+    border-color: var(--border-dark) !important;
+    color: var(--text-primary-dark) !important;
+  }
+  body[data-theme="auto"] .brand,
+  body[data-theme="auto"] .topbar .pill,
+  body[data-theme="auto"] #adminEntry {
+    color: var(--text-primary-dark) !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .topbar {
+    background: color-mix(in srgb, var(--surface-light) 92%, transparent) !important;
+  }
+  .search-wrap input,
+  .dialog-card input,
+  .dialog-card textarea,
+  .dialog-card select,
+  .studio-shell input,
+  .studio-shell textarea,
+  .studio-shell select {
+    min-height: 46px;
+    font-size: 16px !important;
+  }
+  .editor-action-dock,
+  .edit-action-bar {
+    color: var(--text-primary-light) !important;
+  }
+}
