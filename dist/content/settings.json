@@ -92,6 +92,64 @@
         "target": "essay",
         "type": "essay"
       }
-    ]
+    ],
+    "content": {
+      "photography": [
+        {
+          "id": "photo-rain-corner",
+          "type": "photography",
+          "title": "?????",
+          "published": "2026-06-28",
+          "place": "Osaka, Japan",
+          "caption": "?????????????????",
+          "image": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+          "thumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+          "status": "public",
+          "updated": "2026-06-28T12:49:33.043Z",
+          "coverImage": "",
+          "coverThumb": ""
+        }
+      ],
+      "thought": [
+        {
+          "id": "thought-night-store",
+          "type": "thought",
+          "title": "???????",
+          "published": "2026-06-28",
+          "place": "Osaka, Japan",
+          "tags": [
+            "??",
+            "???"
+          ],
+          "body": "???????????????????",
+          "status": "public",
+          "updated": "2026-06-28T12:49:33.043Z",
+          "image": "",
+          "thumb": "",
+          "coverImage": "",
+          "coverThumb": ""
+        }
+      ],
+      "essay": [
+        {
+          "id": "essay-slow-journey",
+          "type": "essay",
+          "title": "???????????????",
+          "published": "2026-06-28",
+          "category": "Travel Essay",
+          "tags": [
+            "??",
+            "??"
+          ],
+          "body": "????????????????????????????",
+          "coverImage": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+          "coverThumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+          "status": "public",
+          "updated": "2026-06-28T12:49:33.043Z",
+          "image": "",
+          "thumb": ""
+        }
+      ]
+    }
   }
 }

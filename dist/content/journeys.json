@@ -936,5 +936,47 @@
     "galleryLayout": "auto",
     "coverCaption": "",
     "status": "public"
+  },
+  {
+    "id": "journey-huanghun-sanbu",
+    "slug": "huanghun-sanbu",
+    "title": "????",
+    "place": "Osaka, Japan",
+    "country": "Japan",
+    "city": "Osaka",
+    "published": "2026-06-28",
+    "updated": "2026-06-28",
+    "category": "Travel",
+    "tags": [
+      "??",
+      "??",
+      "??"
+    ],
+    "excerpt": "???????????????",
+    "bodyTop": "???????????????????????????",
+    "bodyBottom": "???????????????????????????",
+    "coverImage": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+    "coverThumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+    "cardImage": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+    "cardThumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+    "gallery": [
+      {
+        "id": "huanghun-1",
+        "src": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+        "thumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+        "title": "????",
+        "caption": "?????????"
+      }
+    ],
+    "tips": [
+      "?????????????????"
+    ],
+    "status": "public",
+    "views": 0,
+    "theme": {
+      "background": "#eef3ef",
+      "accent": "#b8cbc4",
+      "button": "#9fb7b1"
+    }
   }
 ]

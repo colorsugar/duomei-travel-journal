@@ -1,5 +1,12 @@
 [
   {
+    "id": "version-1782650973019",
+    "createdAt": "2026-06-28T12:49:32.878Z",
+    "actor": "admin-key",
+    "message": "Add V5.3.4 real content channels",
+    "summary": "Add required Travel, Photography, Thought, and Essay content."
+  },
+  {
     "id": "version-1782647938030",
     "createdAt": "2026-06-28T11:58:57.777Z",
     "actor": "admin-key",
