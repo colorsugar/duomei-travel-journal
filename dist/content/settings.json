@@ -98,14 +98,14 @@
         {
           "id": "photo-rain-corner",
           "type": "photography",
-          "title": "?????",
+          "title": "雨后的街角",
           "published": "2026-06-28",
           "place": "Osaka, Japan",
-          "caption": "?????????????????",
+          "caption": "雨停以后，街角留下了一层很浅的光。",
           "image": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
           "thumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
           "status": "public",
-          "updated": "2026-06-28T12:49:33.043Z",
+          "updated": "2026-06-28T12:54:57.856Z",
           "coverImage": "",
           "coverThumb": ""
         }
@@ -114,16 +114,16 @@
         {
           "id": "thought-night-store",
           "type": "thought",
-          "title": "???????",
+          "title": "夜色里的便利店",
           "published": "2026-06-28",
           "place": "Osaka, Japan",
           "tags": [
-            "??",
-            "???"
+            "夜色",
+            "便利店"
           ],
-          "body": "???????????????????",
+          "body": "夜色很轻，便利店的灯像一枚安静的句号。",
           "status": "public",
-          "updated": "2026-06-28T12:49:33.043Z",
+          "updated": "2026-06-28T12:54:57.856Z",
           "image": "",
           "thumb": "",
           "coverImage": "",
@@ -134,18 +134,18 @@
         {
           "id": "essay-slow-journey",
           "type": "essay",
-          "title": "???????????????",
+          "title": "从一个地方，慢慢走到下一个地方",
           "published": "2026-06-28",
           "category": "Travel Essay",
           "tags": [
-            "??",
-            "??"
+            "旅行",
+            "生活"
           ],
-          "body": "????????????????????????????",
+          "body": "旅行不是赶路。它更像把生活翻慢一点，听见风，也听见自己。",
           "coverImage": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
           "coverThumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
           "status": "public",
-          "updated": "2026-06-28T12:49:33.043Z",
+          "updated": "2026-06-28T12:54:57.856Z",
           "image": "",
           "thumb": ""
         }

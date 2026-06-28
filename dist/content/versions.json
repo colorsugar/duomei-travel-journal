@@ -1,5 +1,12 @@
 [
   {
+    "id": "version-1782651297860",
+    "createdAt": "2026-06-28T12:54:57.700Z",
+    "actor": "admin-key",
+    "message": "Fix V5.3.4 content encoding",
+    "summary": "Restore Chinese titles and body text for required content."
+  },
+  {
     "id": "version-1782650973019",
     "createdAt": "2026-06-28T12:49:32.878Z",
     "actor": "admin-key",
