@@ -1728,6 +1728,12 @@ body.admin-authenticated.edit-on .home-cover-upload { display: inline-flex; }
     min-height: 160px !important;
     max-height: 24vh !important;
   }
+  .edit-action-bar {
+    bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+    width: calc(100vw - 24px);
+    justify-content: flex-start;
+    z-index: 121;
+  }
 }
 
 /* V5.3.4 product contract stabilization */
