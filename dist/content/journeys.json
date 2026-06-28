@@ -941,42 +941,62 @@
     "id": "journey-huanghun-sanbu",
     "slug": "huanghun-sanbu",
     "title": "黄昏散步",
-    "place": "Osaka, Japan",
-    "country": "Japan",
-    "city": "Osaka",
     "published": "2026-06-28",
     "updated": "2026-06-28",
+    "views": 0,
     "category": "Travel",
+    "place": "Osaka, Japan",
+    "excerpt": "黄昏的时候，城市慢慢安静下来。",
     "tags": [
       "黄昏",
       "散步",
       "大阪"
     ],
-    "excerpt": "黄昏的时候，城市慢慢安静下来。",
     "bodyTop": "沿着街道慢慢走，风从楼与楼之间穿过去，留下很淡的温度。",
     "bodyBottom": "有些旅程不需要很远，只要愿意停下来，就能看见生活的光。",
+    "mapText": "这里以后可以加入 黄昏散步 的地图、路线或拍摄地点备注。",
     "coverImage": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
     "coverThumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
     "cardImage": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
     "cardThumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+    "theme": {
+      "background": "#eef3ef",
+      "accent": "#b8cbc4",
+      "button": "#9fb7b1"
+    },
+    "styles": {},
     "gallery": [
       {
         "id": "huanghun-1",
         "src": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
         "thumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
         "title": "黄昏的街",
-        "caption": "慢慢走到天色变暗。"
+        "caption": "慢慢走到天色变暗。",
+        "alt": "黄昏的街",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 0,
+        "height": 0,
+        "originalBytes": 0,
+        "outputBytes": 0,
+        "uploadedAt": "",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
       }
     ],
+    "country": "Japan",
+    "city": "Osaka",
     "tips": [
       "傍晚散步时留意街灯刚亮起的几分钟。"
     ],
     "status": "public",
-    "views": 0,
-    "theme": {
-      "background": "#eef3ef",
-      "accent": "#b8cbc4",
-      "button": "#9fb7b1"
-    }
+    "coverCaption": "",
+    "galleryLayout": "auto"
   }
 ]

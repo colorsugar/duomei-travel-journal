@@ -100,14 +100,18 @@
           "type": "photography",
           "title": "雨后的街角",
           "published": "2026-06-28",
-          "place": "Osaka, Japan",
-          "caption": "雨停以后，街角留下了一层很浅的光。",
-          "image": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
-          "thumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
-          "status": "public",
           "updated": "2026-06-28T12:54:57.856Z",
-          "coverImage": "",
-          "coverThumb": ""
+          "place": "Osaka, Japan",
+          "category": "Photography",
+          "tags": [],
+          "body": "雨停以后，街角留下了一层很浅的光。",
+          "caption": "雨停以后，街角留下了一层很浅的光。",
+          "coverImage": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+          "coverThumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+          "status": "public",
+          "styles": {},
+          "image": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
+          "thumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png"
         }
       ],
       "thought": [
@@ -116,18 +120,21 @@
           "type": "thought",
           "title": "夜色里的便利店",
           "published": "2026-06-28",
+          "updated": "2026-06-28T12:54:57.856Z",
           "place": "Osaka, Japan",
+          "category": "Thought",
           "tags": [
             "夜色",
             "便利店"
           ],
           "body": "夜色很轻，便利店的灯像一枚安静的句号。",
-          "status": "public",
-          "updated": "2026-06-28T12:54:57.856Z",
-          "image": "",
-          "thumb": "",
+          "caption": "",
           "coverImage": "",
-          "coverThumb": ""
+          "coverThumb": "",
+          "status": "public",
+          "styles": {},
+          "image": "",
+          "thumb": ""
         }
       ],
       "essay": [
@@ -136,16 +143,19 @@
           "type": "essay",
           "title": "从一个地方，慢慢走到下一个地方",
           "published": "2026-06-28",
+          "updated": "2026-06-28T12:54:57.856Z",
+          "place": "",
           "category": "Travel Essay",
           "tags": [
             "旅行",
             "生活"
           ],
           "body": "旅行不是赶路。它更像把生活翻慢一点，听见风，也听见自己。",
+          "caption": "",
           "coverImage": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
           "coverThumb": "./uploads/20260627193916-journey-mqv4z0it-cover-728b714e.png",
           "status": "public",
-          "updated": "2026-06-28T12:54:57.856Z",
+          "styles": {},
           "image": "",
           "thumb": ""
         }
