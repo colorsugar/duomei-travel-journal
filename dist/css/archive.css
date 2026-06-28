@@ -528,9 +528,6 @@ body::before {
 
 .brand { color: #fff; text-shadow: 0 4px 24px rgba(0,0,0,.42); }
 .public-nav { display: contents; }
-.topbar-actions > button[data-view="journey"],
-.topbar-actions > button[data-view="tags"],
-.topbar-actions > button[data-view="stats"] { display: none !important; }
 
 button,
 .pill,
@@ -1563,9 +1560,6 @@ body:not(.studio-open) .hero .site-poem {
   line-height: 1.8 !important;
   color: rgba(255,255,255,.86) !important;
 }
-.topbar-actions > button[data-view="journey"],
-.topbar-actions > button[data-view="tags"],
-.topbar-actions > button[data-view="stats"] { display: none !important; }
 .public-nav { display: contents !important; }
 .float-panel {
   position: fixed !important;
