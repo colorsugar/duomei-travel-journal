@@ -998,5 +998,123 @@
     "status": "public",
     "coverCaption": "",
     "galleryLayout": "auto"
+  },
+  {
+    "id": "journey-mqxtkmb0-1782653005548-tc7vja49",
+    "slug": "journey-mqxtkmb0",
+    "title": "你自己看这默认文字颜色 和背景 完全看不了",
+    "published": "2026-06-28",
+    "updated": "2026-06-28",
+    "views": 1,
+    "category": "Travel",
+    "place": "",
+    "excerpt": "夜深人静，风从窗缝里渗进来，带着夏夜的潮湿气息。城市的灯火在远方微微闪烁，仿佛在诉说着无数未眠的故事。心中忽然升起一种奇妙的空灵感，像是漂浮在时间的缝隙里，既不属于过去，也不归于未来。记忆里的细碎片段，在这一刻如同河水般缓缓流淌，每一滴都带着淡淡的温度。或许人生就是这样，一边向前走，一边与自己的心灵对话，在无声中找到微小而真实的安慰。",
+    "tags": [],
+    "bodyTop": "",
+    "bodyBottom": "照片会慢慢替换成真实记忆。等以后再翻回来时，它会像一本安静的写真集。",
+    "mapText": "这里以后可以加入 你自己看这默认文字颜色 和背景 完全看不了 的地图、路线或拍摄地点备注。",
+    "coverImage": "",
+    "coverThumb": "",
+    "cardImage": "",
+    "cardThumb": "",
+    "theme": null,
+    "styles": {},
+    "gallery": [
+      {
+        "id": "journey-mqxtkmb0-photo-0-1782653005548-kvbe25xq",
+        "src": "",
+        "thumb": "",
+        "title": "",
+        "caption": "照片说明可以在这里编辑。",
+        "alt": "照片说明可以在这里编辑。",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 0,
+        "height": 0,
+        "originalBytes": 0,
+        "outputBytes": 0,
+        "uploadedAt": "",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "journey-mqxtkmb0-photo-1-1782653005548-nvdwv7jr",
+        "src": "",
+        "thumb": "",
+        "title": "",
+        "caption": "",
+        "alt": "",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 0,
+        "height": 0,
+        "originalBytes": 0,
+        "outputBytes": 0,
+        "uploadedAt": "",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "journey-mqxtkmb0-photo-2-1782653005548-v2iom2i3",
+        "src": "",
+        "thumb": "",
+        "title": "",
+        "caption": "",
+        "alt": "",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 0,
+        "height": 0,
+        "originalBytes": 0,
+        "outputBytes": 0,
+        "uploadedAt": "",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      },
+      {
+        "id": "journey-mqxtkmb0-photo-3-1782653005548-rn39qz55",
+        "src": "",
+        "thumb": "",
+        "title": "",
+        "caption": "",
+        "alt": "",
+        "place": "",
+        "takenAt": "",
+        "camera": "",
+        "notes": "",
+        "width": 0,
+        "height": 0,
+        "originalBytes": 0,
+        "outputBytes": 0,
+        "uploadedAt": "",
+        "aspectMode": "original",
+        "styles": {
+          "title": {},
+          "caption": {},
+          "meta": {}
+        }
+      }
+    ],
+    "galleryLayout": "auto",
+    "coverCaption": "",
+    "status": "public"
   }
 ]
