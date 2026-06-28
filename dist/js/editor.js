@@ -119,17 +119,22 @@
     if (!file) throw new Error("没有读取到图片文件");
     const progress = $("#uploadProgress");
     if (progress) progress.hidden = false;
-    $("#uploadProgressTitle").textContent = "正在从相册读取照片...";
-    if (!file.size) {
-      await new Promise((resolve) => setTimeout(resolve, 450));
-      if (!file.size) throw new Error("照片尚未从 iCloud 下载完成，请稍后重试");
+    $("#uploadProgressTitle").textContent = "正在从 iCloud / 相册读取照片...";
+    const startedAt = Date.now();
+    let lastError = null;
+    while (Date.now() - startedAt < 15000) {
+      try {
+        if (file.size > 0) {
+          await file.slice(0, Math.min(file.size, 256 * 1024)).arrayBuffer();
+          return file;
+        }
+      } catch (error) {
+        lastError = error;
+      }
+      $("#uploadProgressTitle").textContent = "正在从 iCloud 读取照片...";
+      await new Promise((resolve) => setTimeout(resolve, 650));
     }
-    try {
-      await file.slice(0, Math.min(file.size, 64 * 1024)).arrayBuffer();
-    } catch {
-      throw new Error("无法读取照片，请确认 iCloud 下载完成后重试");
-    }
-    return file;
+    throw new Error(lastError ? "照片读取失败，请确认 iCloud 下载完成后重试" : "照片还在从 iCloud 下载，请稍后再点完成");
   }
 
   async function compressDirect(file, onStage = () => {}) {

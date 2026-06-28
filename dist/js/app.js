@@ -76,7 +76,7 @@
       root.innerHTML = photos.length
         ? photos.map(({ city, photo }, index) => `
           <article class="gallery-item reveal">
-            <div class="photo" ${photo.isCover ? `data-open-city="${city.slug}"` : `data-city="${city.id}" data-photo="${photo.id}"`}>
+            <div class="photo" data-city="${city.id}" data-photo="${photo.id}">
               <img src="${photo.thumb || photo.src || photo.image}" alt="${photo.alt || photo.title || city.title}">
             </div>
             <div class="photo-copy"><h3>${photo.title || city.title}</h3><p>${photo.caption || city.place || ""}</p></div>

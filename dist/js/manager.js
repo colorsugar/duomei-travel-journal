@@ -310,16 +310,13 @@
     const info = metrics(data);
     let publishState = null;
     try { publishState = JSON.parse(localStorage.getItem("duomei_last_publish") || "null"); } catch {}
-    let detailedPublishState = null;
-    try { detailedPublishState = JSON.parse(localStorage.getItem("duomei_publish_state") || "null"); } catch {}
-    const commitAccepted = ["commit-success", "waiting-pages", "pages-ready", "published"].includes(detailedPublishState?.state) || publishState?.status === "waiting-pages" || publishState?.status === "published";
-    const visiblePending = commitAccepted ? 0 : info.pending;
     info.sizes = await Promise.all(info.media.map(mediaByteSize));
     info.average = info.sizes.length ? Math.round(info.sizes.reduce((a, b) => a + b, 0) / info.sizes.length) : 0;
     panel.hidden = false;
     if (type === "journey") {
       const journeys = data.journeys.filter((city) => city.status !== "asset");
-      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">旅行档案</span><h2>旅程</h2><p>在工作室内选择、预览和编辑旅行档案。</p></div><button class="pill edit-only" data-action="add-city">添加旅程</button></header>
+      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">Content Manager</span><h2>内容</h2><p>管理「游 / 景 / 想 / 文」四个频道的内容。</p></div><button class="pill edit-only" data-action="add-city">新增旅行</button></header>
+        <div class="content-tabs"><button class="active" type="button">游</button><button type="button" disabled>景</button><button type="button" disabled>想</button><button type="button" disabled>文</button></div>
         <div class="studio-journey-list">${journeys.map((city, index) => `<article>
           <span class="journey-index">${String(index + 1).padStart(2, "0")}</span>
           <div class="journey-preview">${city.cardImage || city.coverImage ? `<img src="${city.cardThumb || city.coverThumb || city.cardImage || city.coverImage}" alt="">` : ""}</div>
@@ -329,15 +326,11 @@
         </article>`).join("") || "<p>还没有 Journey。</p>"}</div>`;
     }
     if (type === "media") {
-      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">媒体库</span><h2>图片管理</h2><p>${info.media.length} 张已引用图片，${visiblePending} 张等待发布，${info.emptySlots} 个空槽位。</p></div>
+      panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">媒体库</span><h2>图片管理</h2><p>${info.media.length} 张已引用图片，${info.pending} 张等待发布，${info.emptySlots} 个空槽位。</p></div>
         <label class="studio-search"><span>搜索图片</span><input id="mediaSearch" type="search" placeholder="旅程 / 封面 / 相册"></label></header>
         <div class="media-batch edit-only"><span>批量操作</span><button type="button" data-media-download-selected>下载</button><button type="button" data-media-publish-selected>发布</button><button class="danger" type="button" data-media-delete-selected>删除</button></div>
         <div class="media-manager-grid">${info.media.map((item, mediaIndex) => {
-          const status = detailedPublishState?.state === "published"
-            ? "published"
-            : commitAccepted
-              ? "waiting"
-              : item.src.startsWith("data:") ? "pending" : publishState?.status === "waiting-pages" ? "waiting" : "published";
+          const status = item.src.startsWith("data:") ? "pending" : publishState?.status === "waiting-pages" ? "waiting" : "published";
           const statusLabel = status === "pending" ? "未发布" : status === "waiting" ? "正在等待 Pages" : "已发布";
           const compression = item.originalBytes && item.outputBytes ? Math.max(0, Math.round((1 - item.outputBytes / item.originalBytes) * 100)) : null;
           return `<article>
@@ -379,7 +372,7 @@
           <section><span>平均图片</span><strong>${sizeLabel(info.average)}</strong></section>
           <section><span>最大图片</span><strong>${sizeLabel(largest)}</strong></section>
           <section><span>最小图片</span><strong>${sizeLabel(smallest)}</strong></section>
-          <section><span>未发布图片</span><strong>${visiblePending}</strong></section>
+          <section><span>未发布图片</span><strong>${info.pending}</strong></section>
         </div>`;
     }
     if (type === "health") {
@@ -391,7 +384,7 @@
       ];
       panel.innerHTML = `<header class="panel-heading"><div><span class="panel-kicker">系统状态</span><h2>健康状态</h2><p>作品档案、图片、缓存与恢复能力的综合状态。</p></div></header>
         <section class="health-detail"><div class="health-ring large" style="--score:${info.score}"><div><strong>${info.score}</strong><small>/ 100</small></div></div>
-          <div><h3>${info.score >= 90 ? "优秀" : info.score >= 75 ? "良好" : "需要关注"}</h3>${advice.map((text, index) => `<p><span class="health-state ${index === 0 && visiblePending ? "warning" : "good"}"></span>${text}</p>`).join("")}</div>
+          <div><h3>${info.score >= 90 ? "优秀" : info.score >= 75 ? "良好" : "需要关注"}</h3>${advice.map((text, index) => `<p><span class="health-state ${index === 0 && info.pending ? "warning" : "good"}"></span>${text}</p>`).join("")}</div>
         </section>`;
     }
     if (type === "home") {
@@ -481,7 +474,7 @@
     studioState.view = type;
     document.querySelectorAll("[data-studio-view]").forEach((button) => button.classList.toggle("active", button.dataset.studioView === type));
     shell?.classList.remove("sidebar-open");
-    const titles = { studio: "工作室", journey: "旅程", media: "媒体", home: "首页", repository: "存储库", health: "健康状态", recovery: "恢复", settings: "设置" };
+    const titles = { studio: "工作室", journey: "内容", media: "媒体", home: "首页", repository: "存储库", health: "健康状态", recovery: "恢复", settings: "设置" };
     document.getElementById("studioViewTitle").textContent = titles[type] || "Studio";
     home.hidden = type !== "studio";
     panel.hidden = type === "studio";
@@ -588,7 +581,6 @@
   }
 
   function openDashboard() {
-    clearOperationFailure();
     refreshDashboard();
     const dialog = document.getElementById("dashboardDialog");
     if (typeof dialog.showModal === "function") dialog.showModal();
@@ -652,15 +644,6 @@
     }, { once: true });
   }
 
-  function clearOperationFailure() {
-    const panel = document.getElementById("uploadProgress");
-    if (!panel) return;
-    panel.classList.remove("is-failed");
-    panel.querySelectorAll(".publish-failure, [data-status='failed']").forEach((node) => node.remove());
-    if (!panel.classList.contains("is-complete")) panel.hidden = true;
-    clearTimeout(panel.hideTimer);
-  }
-
   function bind() {
     renderIcons();
     document.getElementById("adminDashboard")?.addEventListener("click", openDashboard);
@@ -682,11 +665,16 @@
     });
     document.getElementById("studioCollapse")?.addEventListener("click", () => {
       document.querySelector(".studio-shell")?.classList.toggle("sidebar-collapsed");
+      document.querySelector(".studio-shell")?.classList.remove("sidebar-open");
     });
     document.getElementById("studioMenu")?.addEventListener("click", () => {
       document.querySelector(".studio-shell")?.classList.toggle("sidebar-open");
     });
     document.addEventListener("click", async (event) => {
+      const shell = document.querySelector(".studio-shell");
+      if (shell?.classList.contains("sidebar-open") && !event.target.closest(".studio-sidebar, #studioMenu")) {
+        shell.classList.remove("sidebar-open");
+      }
       const studioButton = event.target.closest(".studio-shell button");
       if (studioButton) {
         const rect = studioButton.getBoundingClientRect();
@@ -700,6 +688,7 @@
       const studioView = event.target.closest("[data-studio-view]");
       if (studioView) {
         await switchStudioView(studioView.dataset.studioView);
+        document.querySelector(".studio-shell")?.classList.remove("sidebar-open");
         return;
       }
       const panel = event.target.closest("[data-admin-panel]");
@@ -832,7 +821,7 @@
       }
     });
     document.addEventListener("change", async (event) => {
-      if (event.target.id !== "heroBackgroundInput") return;
+      if (event.target.id !== "heroBackgroundInput" && event.target.id !== "homeCoverInput") return;
       const file = event.target.files?.[0];
       if (file) await window.ArchiveEditor.uploadHeroBackground(file);
       event.target.value = "";
@@ -840,5 +829,5 @@
     });
   }
 
-  window.ArchiveManager = { bind, openDashboard, refreshDashboard, afterPublish, backup, scheduleRecovery, cancelScheduledRecovery, metrics, sizeLabel, operationProgress, completeOperation, failOperation: failOperationGlass, clearOperationFailure };
+  window.ArchiveManager = { bind, openDashboard, refreshDashboard, afterPublish, backup, scheduleRecovery, cancelScheduledRecovery, metrics, sizeLabel, operationProgress, completeOperation, failOperation: failOperationGlass };
 })();

@@ -61,10 +61,8 @@
     }
     const adminLabel = state.data.settings?.adminEntryLabel || "编";
     const isAdmin = document.body.classList.contains("admin-authenticated");
-    ["adminEntry"].forEach((id) => {
-      const node = document.getElementById(id);
-      if (node) node.textContent = isAdmin ? "返回后台" : adminLabel;
-    });
+    const node = document.getElementById("adminEntry");
+    if (node) node.textContent = isAdmin ? "返回后台" : adminLabel;
     applyHero(state);
     renderPublicNav(state);
   }
@@ -185,7 +183,7 @@
         <div class="card-meta">${esc(city.published)}<br>${esc(city.place)}</div>
         <div class="card-title">${esc(city.title)}</div>
       </article>
-    `).join("") + `<button class="add-card reveal edit-only" data-action="add-city">＋<br><span>新增旅程</span></button>`;
+    `).join("") + `<button class="add-card reveal edit-only" data-action="add-city">＋<br><span>新增城市</span></button>`;
   }
 
   function renderDetail(state, slug, countView = true) {

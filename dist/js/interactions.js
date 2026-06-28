@@ -40,7 +40,7 @@
     const text = String(message || "");
     const inferred = /失败|错误|无法|error|failed/i.test(text) ? "error" : type;
     notify(text, inferred, inferred === "error" ? "需要处理" : "通知");
-    el.textContent = text;
+    el.textContent = message;
     el.dataset.type = inferred;
     el.classList.add("show");
     clearTimeout(toast.timer);
@@ -98,11 +98,9 @@
     const q = value.trim().toLowerCase();
     if (!q) {
       box.innerHTML = "";
-      document.body.classList.remove("search-mode");
       window.ArchiveRender.renderJourney(stateRef, stateRef.data.journeys);
       return;
     }
-    document.body.classList.add("search-mode");
     const list = stateRef.data.journeys.filter((city) => city.status !== "asset").filter((city) => {
       const hay = [
         city.title,
@@ -155,7 +153,7 @@
       ? `<strong>找到 ${list.length} 个旅程</strong>`
       : `<div class="empty-search"><strong>没有找到相关内容</strong><button type="button" data-action="clear-search">清空搜索</button></div>`;
     window.ArchiveRender.renderJourney(stateRef, list);
-    $("#journeyGrid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    requestAnimationFrame(() => $("#journeyGrid")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }
 
   const debouncedSearch = (() => {
@@ -172,7 +170,19 @@
       window.ArchiveUI?.toast("没有找到这个 Journey");
       return;
     }
-    lightboxPhotos = (city.gallery || []).filter((photo) => photo.src || photo.image || photo.thumb);
+    const cover = city.coverImage || city.cardImage
+      ? [{
+          id: `cover-${city.id}`,
+          src: city.coverImage || city.cardImage,
+          thumb: city.coverThumb || city.cardThumb,
+          title: city.title,
+          caption: city.place,
+          place: city.place,
+          takenAt: city.published,
+          alt: city.title
+        }]
+      : [];
+    lightboxPhotos = cover.concat((city.gallery || []).filter((photo) => photo.src || photo.image || photo.thumb));
     lightboxIndex = lightboxPhotos.findIndex((photo) => photo.id === photoId);
     if (!lightboxPhotos.length || lightboxIndex < 0) {
       window.ArchiveUI?.toast("这张照片不存在或尚未上传");
@@ -229,6 +239,9 @@
         if (city) openLightbox(city.id, film.dataset.lightboxPhoto);
       }
       if (event.target.closest("[data-lightbox='close'], [data-action='lightbox-close']")) {
+        closeLightbox();
+      }
+      if (event.target.id === "lightbox") {
         closeLightbox();
       }
       if (event.target.closest("[data-lightbox='prev'], [data-action='lightbox-prev']")) moveLightbox(-1);
@@ -352,12 +365,12 @@
       if (event.target.closest("[data-action='clear-search']")) {
         const input = $("#searchInput");
         if (input) input.value = "";
-        document.body.classList.remove("search-mode");
         searchStable("");
       }
       if (event.target.closest("[data-action='toggle-language']")) {
         const menu = $("#languageMenu");
         if (menu) menu.hidden = !menu.hidden;
+        return;
       }
       const lang = event.target.closest("[data-language]");
       if (lang) {
@@ -368,19 +381,42 @@
       }
       if (event.target.closest("#toast")) {
         const center = $("#notificationCenter");
-        if (center) center.hidden = false;
+        if (center) {
+          renderNotifications();
+          center.hidden = false;
+          center.classList.add("show");
+        }
         $("#toast")?.classList.remove("show");
-      }
-      if (event.target.closest("#notificationClose")) {
-        const center = $("#notificationCenter");
-        if (center) center.hidden = true;
       }
       if (event.target.closest("#notificationBell")) {
         const center = $("#notificationCenter");
-        if (center) center.hidden = false;
+        if (center) {
+          renderNotifications();
+          center.hidden = false;
+          center.classList.add("show");
+        }
+        return;
+      }
+      if (event.target.closest("#notificationClose")) {
+        const center = $("#notificationCenter");
+        if (center) {
+          center.hidden = true;
+          center.classList.remove("show");
+        }
       }
       const tag = event.target.closest("[data-filter-tag]");
       if (tag) filterTag(tag.dataset.filterTag);
+    });
+    document.addEventListener("click", (event) => {
+      const languageMenu = $("#languageMenu");
+      if (languageMenu && !languageMenu.hidden && !event.target.closest(".language-switch")) {
+        languageMenu.hidden = true;
+      }
+      const center = $("#notificationCenter");
+      if (center && !center.hidden && !event.target.closest("#notificationCenter, #notificationBell, #toast")) {
+        center.hidden = true;
+        center.classList.remove("show");
+      }
     });
   }
 

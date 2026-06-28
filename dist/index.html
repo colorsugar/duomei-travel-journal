@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>多美 | Travel Journal</title>
-  <link rel="stylesheet" href="./css/archive.css?v=20260628-v5-3-7">
+  <link rel="stylesheet" href="./css/archive.css?v=20260628-v5-3-8">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -50,6 +50,10 @@
           <h1 class="site-title editable" data-bind="site.title">多美</h1>
           <p class="site-subtitle editable" data-bind="site.subtitle">Travel Journal</p>
           <p class="site-poem editable" data-bind="site.poem">记录一路看到的风景，<br>也记录一路走过的生活。</p>
+          <label class="home-cover-upload edit-only admin-only">
+            上传首页封面
+            <input id="homeCoverInput" type="file" accept="image/*">
+          </label>
         </div>
         <aside id="heroFeatured" class="hero-featured"></aside>
       </section>
@@ -138,9 +142,11 @@
     <button type="button" data-action="focus-search">搜索</button>
   </div>
 
-  <button id="quickAddCity" class="quick-add edit-only admin-only" type="button" data-action="add-city">＋ 添加城市</button>
-  <button id="editToggle" class="edit-toggle admin-only" type="button" aria-pressed="false">编辑模式</button>
-  <button id="adminPublish" class="publish-toggle edit-only admin-only" type="button" data-action="publish">发布</button>
+  <div id="editorActionDock" class="editor-action-dock admin-only" aria-label="编辑操作">
+    <button id="quickAddCity" class="quick-add edit-only admin-only" type="button" data-action="add-city">＋ 添加城市</button>
+    <button id="adminPublish" class="publish-toggle edit-only admin-only" type="button" data-action="publish">发布</button>
+    <button id="editToggle" class="edit-toggle admin-only" type="button" aria-pressed="false">编辑模式</button>
+  </div>
   <nav id="editActionBar" class="edit-action-bar edit-only admin-only" aria-label="编辑操作">
     <button type="button" data-editor-action="save">保存</button>
     <button type="button" data-editor-action="cancel">取消</button>
@@ -370,15 +376,15 @@
     <p id="lightboxCaption"></p>
   </div>
 
-  <script src="./js/data.js?v=20260628-v5-3-7"></script>
-  <script src="./js/store.js?v=20260628-v5-3-7"></script>
-  <script src="./js/image.js?v=20260628-v5-3-7"></script>
-  <script src="./js/render.js?v=20260628-v5-3-7"></script>
-  <script src="./js/editor.js?v=20260628-v5-3-7"></script>
-  <script src="./js/interactions.js?v=20260628-v5-3-7"></script>
-  <script src="./js/cms-client.js?v=20260628-v5-3-7"></script>
-  <script src="./js/manager.js?v=20260628-v5-3-7"></script>
-  <script src="./js/admin.js?v=20260628-v5-3-7"></script>
-  <script src="./js/app.js?v=20260628-v5-3-7"></script>
+  <script src="./js/data.js?v=20260628-v5-3-8"></script>
+  <script src="./js/store.js?v=20260628-v5-3-8"></script>
+  <script src="./js/image.js?v=20260628-v5-3-8"></script>
+  <script src="./js/render.js?v=20260628-v5-3-8"></script>
+  <script src="./js/editor.js?v=20260628-v5-3-8"></script>
+  <script src="./js/interactions.js?v=20260628-v5-3-8"></script>
+  <script src="./js/cms-client.js?v=20260628-v5-3-8"></script>
+  <script src="./js/manager.js?v=20260628-v5-3-8"></script>
+  <script src="./js/admin.js?v=20260628-v5-3-8"></script>
+  <script src="./js/app.js?v=20260628-v5-3-8"></script>
 </body>
 </html>
