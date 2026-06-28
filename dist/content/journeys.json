@@ -799,8 +799,8 @@
     "bodyTop": "Home Assets 是旅行档案馆里的一页。\n这里可以写下那天的天气、走过的路、看到的风景，以及照片背后的心情。",
     "bodyBottom": "照片会慢慢替换成真实记忆。等以后再翻回来时，它会像一本安静的写真集。",
     "mapText": "这里以后可以加入 Home Assets 的地图、路线或拍摄地点备注。",
-    "coverImage": "./uploads/20260628115857--home-assets-cover-ca51b564.webp",
-    "coverThumb": "./uploads/20260628115857--home-assets-cover-thumb-99aca96b.webp",
+    "coverImage": "./uploads/20260628132848--home-assets-cover-074dcd8c.png",
+    "coverThumb": "./uploads/20260628132848--home-assets-cover-thumb-2b880b65.png",
     "cardImage": "",
     "cardThumb": "",
     "theme": null,
@@ -808,13 +808,13 @@
     "gallery": [],
     "status": "asset",
     "coverMeta": {
-      "name": "DSC_4133.JPG",
-      "originalBytes": 15702031,
-      "outputBytes": 370029,
+      "name": "DSC_6546.jpeg",
+      "originalBytes": 17141976,
+      "outputBytes": 3880365,
       "width": 1800,
       "height": 1200,
       "aspectMode": "original",
-      "uploadedAt": "2026-06-28T11:47:39.936Z"
+      "uploadedAt": "2026-06-28T13:28:41.618Z"
     },
     "coverCaption": "",
     "galleryLayout": "auto"
